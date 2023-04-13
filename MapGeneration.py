@@ -233,5 +233,6 @@ cen = element_discr(pitch, kerf, elevation, Nx, Ny)
 grid, idx, Nx, Nz = gridcreate(pitch, el, step, dz, min_depth, max_depth)
 g = rit_g(geomf, cen[:,1], c)
 # %%
+
 Hprova = narrowMap(pitch, c, dt, g, grid, Nx, Nz, 0.5, cen, 4e6)
 # %%
