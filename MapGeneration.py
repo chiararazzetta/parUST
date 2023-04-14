@@ -44,12 +44,9 @@ def mrisptopy(cen, p, v, dt, g):
     npunti = p.shape[0]
     h = np.zeros((npunti, 300), dtype=np.float32)
     t = np.zeros(npunti, dtype=np.float32)
-
-    print('s')
-    tempo = time.time()
+    
     H(cen, row, p, npunti, v, dt, g, 1, h, t)
-    print('f')
-    print(time.time() - tempo)
+    
     return h/row, t
 
 # %%
@@ -148,7 +145,7 @@ def Narrow_att_map(coordz, f0, factor, N):
     
     attmap = 10 ** ((-factor/20) * (f0 * coordz)/(10 ** 4))
 
-    return attmap.repeat(N, 1)
+    return np.tile(attmap, (N, 1))
 
 #%% 
 
@@ -179,7 +176,7 @@ def Wide_att_map(coordz, Nz, Nx, factor, nt, pad, dt):
 
 # %%
 
-def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, dz, min_d, max_d, factor, f0):
+def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
     """_summary_
 
     Args:
@@ -201,38 +198,43 @@ def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, dz, min_d, max_d, factor, f0):
     """    
     geom = rit_g(f_g, cen[:,1], c)
 
-    grid, indexes, Nx, Nz = gridcreate(pitch, nel, step, dz, min_d, max_d)
+    grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
 
-    A = Narrow_att_map(grid[:,2], f0, factor, Nx)
+    A = Narrow_att_map(grid[:Nz,2], f0, factor, Nx)
 
     H = np.zeros((nel, Nx, Nz), dtype = np.complex128)
 
+    tempo = time.time()
     for i in range(nel):
+        grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
         H1 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, i + 0.5, cen, f0)
+        grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
         H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i-1+0.5, cen, f0)
         H[i, :, :] = H1+H2
-
-    return H * A[np.newaxis, :, :], grid, [Nx, Nz]
+    print(time.time() - tempo)
+    return H, A, grid, [Nx, Nz]
 
 # %%
-pitch = 0.0025
-kerf = 0.0005
-elevation = 0.005
-el = 100
+pitch = 0.245e-3
+kerf = 0.035e-3
+elevation = 5e-3
+el = 60
 step = 0.25
-dz = 1e-4
-min_depth = 0.008
-max_depth = 0.02
-Nx = 20
+min_depth = 0.002
+max_depth = 0.042
+Nx = 40
 Ny = 100
-geomf = 0.02
+Nz = 400
+geomf = 0.025
 c = 1540
 dt = 1e-8
 
 cen = element_discr(pitch, kerf, elevation, Nx, Ny)
-grid, idx, Nx, Nz = gridcreate(pitch, el, step, dz, min_depth, max_depth)
-g = rit_g(geomf, cen[:,1], c)
+Hprova = NarrowMaps(pitch, cen, geomf, el, c, dt, step, Nz, min_depth, max_depth, 0.5, 4e6)
 # %%
+import pickle
 
-Hprova = narrowMap(pitch, c, dt, g, grid, Nx, Nz, 0.5, cen, 4e6)
+fv = open('Maps/L415/maps40e5.pkl', 'rb')
+vecchio = pickle.load(fv)
+fv.close()
 # %%

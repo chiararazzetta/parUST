@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 
 # %%
-def gridcreate(pitch, el, step, dz, min_depth, max_depth):
+def gridcreate(pitch, el, step, Nz, min_depth, max_depth):
     """_summary_
 
     Args:
@@ -17,22 +17,21 @@ def gridcreate(pitch, el, step, dz, min_depth, max_depth):
     Returns:
         _type_: _description_
     """    
-    coordx = np.arange(0, el + step, step, dtype = np.float32)
+    coordx = np.arange(-el , el, step, dtype = np.float32)
     coordx = coordx * pitch
-    coordz = np.arange(min_depth, max_depth, dz, dtype = np.float32)
+    coordz = np.linspace(min_depth, max_depth, Nz, dtype = np.float32)
 
     Nx = coordx.shape[0]
-    Nz = coordz.shape[0]
+
     taglia = Nz * Nx
 
     Z, X = np.meshgrid(coordz, coordx)
     idxZ, idxX = np.meshgrid(np.arange(0, Nz, dtype = np.int32), np.arange(0, Nx, dtype = np.int32))
 
-    grid = np.concatenate(
-        (np.reshape(X, (taglia, 1)), np.zeros((taglia, 1), dtype=np.float32), np.reshape(Z, (taglia, 1))), 1)
+    grid = np.concatenate((np.reshape(X, (taglia, 1)), np.zeros((taglia, 1), dtype=np.float32), np.reshape(Z, (taglia, 1))), 1)
     idx = np.concatenate((np.reshape(idxX, (taglia, 1)), np.reshape(idxZ, (taglia, 1))), 1)
 
-    return grid, idx, Nx, Nz
+    return grid, idx, Nx
 # %%
 
 def rispsonda(path, nt, pad, step):
