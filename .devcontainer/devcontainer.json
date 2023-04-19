@@ -12,9 +12,6 @@
 			"version": "3.8"
 		}
 	},
-
-	"mounts": ["source=/home/nas/chiara/Transmission/Maps,target=/workspaces/TXSim/Maps,type=bind,consistency=cached"],
-
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
@@ -22,7 +19,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip install -r requirements.txt"
+	"postCreateCommand": "python3 -m pip install --upgrade pip ; pip install -r requirements.txt"
 
 	// Configure tool-specific properties.
 	// "customizations": {},

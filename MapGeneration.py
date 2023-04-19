@@ -5,7 +5,8 @@ from numpy.ctypeslib import ndpointer
 import math
 import numpy as np
 import scipy
-import time
+from multiprocessing import cpu_count
+from joblib import Parallel, delayed
 
 from f_initialization import rit_g, gridcreate, element_discr
 # %%
@@ -104,7 +105,7 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe = None):
                        and take in account its shape
 
     Returns:
-        list: a numpy array containing the collection of the impulse responses, a tuple containing the grid dimensions
+        numpy.complex: array containing the collection of the impulse responses
     """       
 
     h, t = mrisptopy(cen, grid, c, dt, geom, nt)
@@ -140,7 +141,7 @@ def Narrow_att_map(coordz, f0, factor, N):
         N (int): number of point along the xaxis
 
     Returns:
-        numpy.float: array containing the attenuation map with grid size
+        numpy.complex: array containing the attenuation map with grid size
     """
     
     attmap = 10 ** ((-factor/20) * (f0 * coordz)/(10 ** 4))
@@ -162,7 +163,7 @@ def Wide_att_map(coordz, Nz, Nx, factor, nt, pad, dt):
         dt (float): time step
 
     Returns:
-        numpy.float: array containing the attenuation map with grid size
+        numpy.complex: array containing the attenuation map with grid size
     """    
     w = np.linspace(0, 1/dt, pad + nt + 1)
     wreal = np.abs(w[0 : (nt + pad) // 2])
@@ -176,25 +177,38 @@ def Wide_att_map(coordz, Nz, Nx, factor, nt, pad, dt):
 
 # %%
 
-def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
-    """_summary_
+def parallelMapcompute(pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i):
+    """
+        Auxiliar function for parallelizing maps computing
+    """
+    grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
+    H1 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, i + 0.5, cen, f0)
+    grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
+    H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i-1+0.5, cen, f0)
+    return H1 + H2
 
+def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
+    """Function for the parallel computing of Narrow maps for multiple element
+    
     Args:
-        pitch (_type_): _description_
-        cen (_type_): _description_
-        f_g (_type_): _description_
-        nel (_type_): _description_
-        c (_type_): _description_
-        dt (_type_): _description_
-        step (_type_): _description_
-        dz (_type_): _description_
-        min_d (_type_): _description_
-        max_d (_type_): _description_
-        factor (_type_): _description_
-        f0 (_type_): _description_
+        pitch (float): element length for translations on the probe
+        cen (numpy.float): array containing the coordinates of element discretization points
+        f_g (float): geometrical focus of the probe
+        nel (int): number of elements of the probe to be considered
+        c (float): medium speed
+        dt (float): time step
+        step (float): fractional part of the probe element for spacing the x coordinates
+        Nz (int): number of points along depth
+        min_d (float): minimum depth
+        max_d (float): maximum depth
+        factor (float): attenuation factor
+        f0 (float): transmission frequency
 
     Returns:
-        _type_: _description_
+        numpy.complex: the maps array
+        numpy.complex: the attenuation map
+        numpy.grid: the grid coordinates
+        list: the grid dimesions
     """    
     geom = rit_g(f_g, cen[:,1], c)
 
@@ -202,39 +216,7 @@ def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
 
     A = Narrow_att_map(grid[:Nz,2], f0, factor, Nx)
 
-    H = np.zeros((nel, Nx, Nz), dtype = np.complex128)
-
-    tempo = time.time()
-    for i in range(nel):
-        grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
-        H1 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, i + 0.5, cen, f0)
-        grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
-        H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i-1+0.5, cen, f0)
-        H[i, :, :] = H1+H2
-    print(time.time() - tempo)
-    return H, A, grid, [Nx, Nz]
-
-# %%
-pitch = 0.245e-3
-kerf = 0.035e-3
-elevation = 5e-3
-el = 60
-step = 0.25
-min_depth = 0.002
-max_depth = 0.042
-Nx = 40
-Ny = 100
-Nz = 400
-geomf = 0.025
-c = 1540
-dt = 1e-8
-
-cen = element_discr(pitch, kerf, elevation, Nx, Ny)
-Hprova = NarrowMaps(pitch, cen, geomf, el, c, dt, step, Nz, min_depth, max_depth, 0.5, 4e6)
-# %%
-import pickle
-
-fv = open('Maps/L415/maps40e5.pkl', 'rb')
-vecchio = pickle.load(fv)
-fv.close()
-# %%
+    H = Parallel(n_jobs = int(cpu_count()-10), backend = "threading")(
+                delayed(parallelMapcompute)
+                (pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i) for i in range(nel))
+    return np.asarray(H), A, grid, [Nx, Nz]

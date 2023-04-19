@@ -1,6 +1,5 @@
-scipy
 numpy
-sphinx
-time
-multiprocessing
+scipy
 joblib
+matplotlib
+multiprocessing

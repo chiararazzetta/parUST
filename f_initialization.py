@@ -4,18 +4,20 @@ import scipy
 
 # %%
 def gridcreate(pitch, el, step, Nz, min_depth, max_depth):
-    """_summary_
+    """Function for computing grid specifications
 
     Args:
-        pitch (_type_): _description_
-        el (_type_): _description_
-        step (_type_): _description_
-        campionamento (_type_): _description_
-        min_depth (_type_): _description_
-        max_depth (_type_): _description_
+        pitch (float):  element length for translations on the probe
+        el (int): number of elements
+        step (float): fractional part of the probe element for spacing the x coordinates
+        Nz (int): number of points along depth
+        min_depth (float): minimum depth
+        max_depth (float): maximum depth
 
     Returns:
-        _type_: _description_
+        numpy.array: coordinates o fthe grid points
+        numpy.int: array containing index for the grid
+        int: number of points along x axis
     """    
     coordx = np.arange(-el , el, step, dtype = np.float32)
     coordx = coordx * pitch
@@ -34,17 +36,18 @@ def gridcreate(pitch, el, step, Nz, min_depth, max_depth):
     return grid, idx, Nx
 # %%
 
-def rispsonda(path, nt, pad, step):
-    """_summary_
+def resp_probe(path, nt, pad, step):
+    """Function for computing the probe impulse response
 
     Args:
-        path (_type_): _description_
-        nt (_type_): _description_
-        pad (_type_): _description_
-        step (_type_): _description_
+        path (string): path to the .tx. file containing the measurements (time - measure in each line)
+        nt (int): pre-established array size
+        pad (int): number of zeros for padding
+        step (float): time step to be used
 
     Returns:
-        _type_: _description_
+        numpy.float: probe impulse response
+        list: indexes of the significant frequences
     """    
     proberesponse = np.loadtxt(path)
     size = proberesponse.shape[0]
@@ -75,14 +78,14 @@ def rispsonda(path, nt, pad, step):
 # %%
 
 def element_discr(pitch, kerf, elevation, Nx, Ny):
-    """_summary_
+    """Function for calculating the grid of a single element for impulse response calculation
 
     Args:
-        pitch (_type_): _description_
-        kerf (_type_): _description_
-        elevation (_type_): _description_
-        Nx (_type_): _description_
-        Ny (_type_): _description_
+        pitch (float):  element length for translations on the probe
+        kerf (float):  space between elements (pitch = kerf + width)
+        elevation (float): height of the element
+        Nx (int): number of point along x-axis
+        Ny (int):number of point along y-axis
 
     Returns:
         _type_: _description_
