@@ -4,13 +4,14 @@ from f_initialization import element_discr
 from BpCompute import std_del, NarrowBP, todB
 import pickle
 import matplotlib.pyplot as plt
+
 # %%
 
 # Narrow Maps Generation example
 pitch = 0.245e-3
 kerf = 0.035e-3
 elevation = 5e-3
-el = 15
+el = 96
 step = 0.25
 min_depth = 0.002
 max_depth = 0.042
@@ -34,7 +35,7 @@ fNarrow.close()
 
 # Narrow BP computation Example
 focus = 0.025
-active_el = 15
+active_el = 20
 
 rit = std_del(focus, pitch, c, active_el)
 
@@ -43,4 +44,4 @@ BP = NarrowBP(rit, H, A, f0, active_el)
 BPdeci = todB(BP)
 
 plt.imshow(BPdeci, cmap = 'jet')
-# %%
+

@@ -8,7 +8,7 @@ import scipy
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed
 
-from f_initialization import rit_g, gridcreate, element_discr
+from f_initialization import rit_g, gridcreateWide, gridcreateNarrow, element_discr, resp_probe
 # %%
 risplib = load_library('matrix.so', '.')
 
@@ -58,7 +58,7 @@ def narrowMap(pitch, c, dt, geom, grid, Nx, Nz, idx, cen, f0):
 
     Args:
         pitch (float): element length for translations on the probe
-        c (float): (float):medium speed
+        c (float): medium speed
         dt (float): time step
         geom (numpy.float): array containing the geometric delays to simulate the probe lens
         grid (numpy.float): array containing the coordinates of the points of the field
@@ -123,8 +123,8 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe = None):
         phase = np.exp(-2 * math.pi * 1j *freq * trif[:, np.newaxis])
         h = h * phase  * A
     else: 
-        dim = hprobe[0]
-        hp = hprobe[1]
+        hp = hprobe[0]
+        dim = hprobe[1]
         phase = np.exp(-2 * math.pi * 1j *freq[:, dim[0]:dim[1]] * trif[:, np.newaxis])
         h = h[:, dim[0]:dim[1]] * phase * hp[np.newaxis, :] * A[:, dim[0]:dim[1]]
 
@@ -150,13 +150,13 @@ def Narrow_att_map(coordz, f0, factor, N):
 
 #%% 
 
-def Wide_att_map(coordz, Nz, Nx, factor, nt, pad, dt):
+def Wide_att_map(coordz, Nx, Nz, factor, nt, pad, dt):
     """ Function for computing the attenuation map in Wide Band case
 
     Args:
         coordz (numpy.float): array containing all the possible depths in the field
-        Nz (int): number of point along the zaxis
         Nx (int): number of point along the xaxis
+        Nz (int): number of point along the zaxis
         factor (float): factor for attenuation rule
         nt (int): maximum number of temporal instant
         pad (int): number of zerod for signals padding
@@ -181,9 +181,9 @@ def parallelMapcompute(pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min
     """
         Auxiliar function for parallelizing maps computing
     """
-    grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = gridcreateNarrow(pitch, nel, step, Nz, min_d, max_d)
     H1 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, i + 0.5, cen, f0)
-    grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = gridcreateNarrow(pitch, nel, step, Nz, min_d, max_d)
     H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i-1+0.5, cen, f0)
     return H1 + H2
 
@@ -207,16 +207,77 @@ def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
     Returns:
         numpy.complex: the maps array
         numpy.complex: the attenuation map
-        numpy.grid: the grid coordinates
+        numpy.float: the grid coordinates
         list: the grid dimesions
     """    
     geom = rit_g(f_g, cen[:,1], c)
 
-    grid, indexes, Nx = gridcreate(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = gridcreateNarrow(pitch, nel, step, Nz, min_d, max_d)
 
     A = Narrow_att_map(grid[:Nz,2], f0, factor, Nx)
 
-    H = Parallel(n_jobs = int(cpu_count()-10), backend = "threading")(
+    H = Parallel(n_jobs = int(cpu_count()), backend = "threading")(
                 delayed(parallelMapcompute)
                 (pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i) for i in range(nel))
     return np.asarray(H), A, grid, [Nx, Nz]
+
+# %% 
+def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes, pad, path = None):
+    """Function to generate an overall map for the central element of the probe, taking in acount the symmetry of the field
+
+    Args:
+        pitch (float): element length for translations on the probe
+        cen (numpy.float): array containing the coordinates of element discretization points
+        f_g (float): geometrical focus of the probe
+        nel (int): number of elements of the probe to be considered
+        c (float): medium speed
+        dt (float): time step
+        step (float): fractional part of the probe element for spacing the x coordinates
+        Nz (int): number of points along depth
+        min_d (float): minimum depth
+        max_d (float): maximum depth
+        factor (float): attenuation factor
+        ntimes (int): maximum number of temporal instant
+        pad (int): number of zerod for signals padding
+        path (string, optional):path to the .txt file containing the measurement of the probe impulse response. Defaults to None.
+
+    Returns:
+        numpy.complex: the attenuated map array
+        list: the grid dimesions
+        numpy.float: the grid coordinates
+        numpy.int: the grid indexes
+        list (optional): indexes of min and max the significant frequences
+        
+    """    
+    geom = rit_g(f_g, cen[:,1], c)
+
+    grid, indexes, Nx = gridcreateWide(pitch, nel, step, Nz, min_d, max_d)
+
+    A = Wide_att_map(grid[:Nz,2], Nz, Nx, factor, ntimes, pad, dt)
+
+    if path is None:
+        H = wideMap(c, dt, geom, grid, cen, ntimes, pad, A, None)
+    else:
+        r_probe, n_freq = resp_probe(path, ntimes, pad, step)
+        H = wideMap(c, dt, geom, grid, cen, ntimes, pad, A, [r_probe, n_freq])
+    
+    Hfin = H[:-Nz,:].copy()
+
+    gneg = grid[Nz:,:].copy()
+    gneg[:, 0] *= -1
+    
+    gridfin = grid.copy()
+
+    indneg = indexes[Nz:,:].copy()
+    indneg[:, 0] *= -1
+    indicifin = indexes.copy()
+ 
+    for i in range(1, Nx):
+        gridfin = np.concatenate((gneg[i*Nz: (i+1)*Nz, :], gridfin))
+        indicifin = np.concatenate((indneg[i * Nz: (i + 1) * Nz, :], indicifin))
+        Hfin = np.concatenate((H[i * Nz: (i + 1) * Nz, :], Hfin))
+
+    if path is None:
+        return Hfin, [Nx, Nz], gridfin, indicifin
+    else:
+        return Hfin, [Nx, Nz], gridfin, indicifin, n_freq
