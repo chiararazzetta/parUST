@@ -1,5 +1,6 @@
 # %% 
 import numpy as np
+import matplotlib.pyplot as plt
 
 # %%
 def std_del(z_f, pitch, c, el):
@@ -30,9 +31,11 @@ def del_to_freq(delays, dt, ntimes, pad, nfreq = None):
         array.complex: array for the delays in frequency
     """    
     if nfreq is None:
-        w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1), (delays.shape[0], 1))
+        w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1), (delays.shape[0], 1 ))
     else:
-        w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0] : nfreq[1]], (delays.shape[0], 1))
+        w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0] : nfreq[1]], (delays.shape[0], 1))[:, :(ntimes + pad) // 2]
+
+    w = w[:, : int((ntimes +pad) / 2)]
 
     return np.exp(-2 * np.pi * 1j * w * delays[:, np.newaxis])
 # %%
@@ -54,7 +57,7 @@ def NarrowBP(delay, map, attenuation, f0, elements):
     return (np.abs(B * attenuation)) ** 2
 
 # %%
-def wideMapCut(NelImm, step, H, Nz, Nx, grid):
+def wideMapCut(NelImm, step, H, Nz, grid):
     """Function to generate the multiple maps for Bp
 
     Args:
@@ -62,7 +65,6 @@ def wideMapCut(NelImm, step, H, Nz, Nx, grid):
         step (float): fractional part of the pitch for spacing the x coordinates
         H (array.complex): global wide map
         Nz (int): number of grid points along z axis
-        Nx (int): number of grid points along x axis
         grid (array.float): coordinates of the grid
 
     Returns:
@@ -76,7 +78,7 @@ def wideMapCut(NelImm, step, H, Nz, Nx, grid):
     N = int(NelImm / 2)
 
     Mapsize = [t * NelImm, H.shape[1]]
-    Maps = np.empty((NelImm, Mapsize[0], Mapsize[1]), dtype=np.complex)
+    Maps = np.empty((NelImm, Mapsize[0], Mapsize[1]), dtype = complex)
 
     for i in range(-N, N):
         sx = c - t * (N + i)
@@ -84,7 +86,7 @@ def wideMapCut(NelImm, step, H, Nz, Nx, grid):
 
         Maps[N + i, :, :] = H[sx: dx, :]
 
-    return Maps, [Nx, Nz], grid[c - t * N: c + t * N + Nz, :]
+    return Maps, [n * NelImm, Nz], grid[c - t * N: c + t * N + Nz, :]
 
 # %% 
 def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq = None):
@@ -105,12 +107,15 @@ def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq = None):
     Returns:
         array.float: beam pattern power values
     """    
-    e = np.concatenate(np.flipud(delay), delay)
+    e = np.concatenate((np.flipud(delay), delay))
     del_freq = del_to_freq(e, dt, ntimes, pad, nfreq)
 
-    delayed = np.sum(map[-elements:elements, :, :] * del_freq[:, np.newaxis, :], axis = 0)
+    center = int(map.shape[0] / 2)
+    delayed = np.sum(map[center-elements:center+elements, :, :] * del_freq[:, np.newaxis, :], axis = 0)
+    
     pulsed = delayed * I[np.newaxis, :]
-    power = np.abs(np.sum(pulsed, axis = 1)) ** 2
+
+    power = np.sum(np.abs(pulsed) ** 2, axis = 1)
     return np.reshape(power, (Nx, Nz))
 
 # %%

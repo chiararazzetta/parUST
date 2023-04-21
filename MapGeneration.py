@@ -8,7 +8,9 @@ import scipy
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed
 
-from f_initialization import rit_g, gridcreateWide, gridcreateNarrow, element_discr, resp_probe
+import matplotlib.pyplot as plt
+
+from f_initialization import rit_g, grid_create, grid_create, resp_probe
 # %%
 risplib = load_library('matrix.so', '.')
 
@@ -21,6 +23,7 @@ H.argtypes = [ndpointer(ctypes.c_float),
               ctypes.c_int,
               ctypes.c_float,
               ctypes.c_float,
+              ctypes.c_int,
               ndpointer(ctypes.c_float),
               ctypes.c_int,
               ndpointer(ctypes.c_float),
@@ -28,7 +31,7 @@ H.argtypes = [ndpointer(ctypes.c_float),
               ]
 
 
-def mrisptopy(cen, p, v, dt, g):
+def mrisptopy(cen, p, v, dt, g, ntimes):
     """ Function to link python objects to c function
 
     Args:
@@ -43,10 +46,10 @@ def mrisptopy(cen, p, v, dt, g):
     """
     row = cen.shape[0]
     npunti = p.shape[0]
-    h = np.zeros((npunti, 300), dtype=np.float32)
-    t = np.zeros(npunti, dtype=np.float32)
+    h = np.zeros((npunti, ntimes), dtype = np.float32)
+    t = np.zeros(npunti, dtype = np.float32)
     
-    H(cen, row, p, npunti, v, dt, g, 1, h, t)
+    H(cen, row, p, npunti, v, dt, ntimes, g, 1, h, t)
     
     return h/row, t
 
@@ -75,7 +78,7 @@ def narrowMap(pitch, c, dt, geom, grid, Nx, Nz, idx, cen, f0):
     phase = np.exp(-2 * math.pi * 1j * T * f0)
 
     grid[:, 0] -= (idx) * pitch
-    h, t = mrisptopy(cen, grid, c, dt, geom)
+    h, t = mrisptopy(cen, grid, c, dt, geom, 300)
 
     trif = t - grid[:, 2] / c
     h = np.sum(h * phase, 1)
@@ -84,7 +87,6 @@ def narrowMap(pitch, c, dt, geom, grid, Nx, Nz, idx, cen, f0):
     return np.reshape(H, (Nx, Nz))
 
 # %%
-
 
 def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe = None):
     """ Function to generate a impulse response map for a grid of points and a fixed probe element
@@ -111,6 +113,7 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe = None):
     h, t = mrisptopy(cen, grid, c, dt, geom, nt)
     h = np.pad(h, ((0, 0), (pad, 0)))
 
+
     h = scipy.fft.fft(h, axis=1)
     h = h[:, :(nt + pad) // 2]
 
@@ -120,7 +123,7 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe = None):
     freq = np.repeat(freq.reshape([1, (nt + pad) // 2]), trif.shape, axis=0)
 
     if hprobe is None:
-        phase = np.exp(-2 * math.pi * 1j *freq * trif[:, np.newaxis])
+        phase = np.exp(-2 * math.pi * 1j * freq * trif[:, np.newaxis])
         h = h * phase  * A
     else: 
         hp = hprobe[0]
@@ -181,9 +184,9 @@ def parallelMapcompute(pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min
     """
         Auxiliar function for parallelizing maps computing
     """
-    grid, indexes, Nx = gridcreateNarrow(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
     H1 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, i + 0.5, cen, f0)
-    grid, indexes, Nx = gridcreateNarrow(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
     H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i-1+0.5, cen, f0)
     return H1 + H2
 
@@ -212,7 +215,7 @@ def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
     """    
     geom = rit_g(f_g, cen[:,1], c)
 
-    grid, indexes, Nx = gridcreateNarrow(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
 
     A = Narrow_att_map(grid[:Nz,2], f0, factor, Nx)
 
@@ -251,33 +254,20 @@ def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes
     """    
     geom = rit_g(f_g, cen[:,1], c)
 
-    grid, indexes, Nx = gridcreateWide(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
 
-    A = Wide_att_map(grid[:Nz,2], Nz, Nx, factor, ntimes, pad, dt)
+    A = Wide_att_map(grid[:Nz,2], Nx, Nz, factor, ntimes, pad, dt)
 
     if path is None:
         H = wideMap(c, dt, geom, grid, cen, ntimes, pad, A, None)
     else:
         r_probe, n_freq = resp_probe(path, ntimes, pad, step)
         H = wideMap(c, dt, geom, grid, cen, ntimes, pad, A, [r_probe, n_freq])
-    
-    Hfin = H[:-Nz,:].copy()
-
-    gneg = grid[Nz:,:].copy()
-    gneg[:, 0] *= -1
-    
-    gridfin = grid.copy()
-
-    indneg = indexes[Nz:,:].copy()
-    indneg[:, 0] *= -1
-    indicifin = indexes.copy()
- 
-    for i in range(1, Nx):
-        gridfin = np.concatenate((gneg[i*Nz: (i+1)*Nz, :], gridfin))
-        indicifin = np.concatenate((indneg[i * Nz: (i + 1) * Nz, :], indicifin))
-        Hfin = np.concatenate((H[i * Nz: (i + 1) * Nz, :], Hfin))
 
     if path is None:
-        return Hfin, [Nx, Nz], gridfin, indicifin
+        return H, [Nx, Nz], grid, indexes
     else:
-        return Hfin, [Nx, Nz], gridfin, indicifin, n_freq
+        return H, [Nx, Nz], grid, indexes, n_freq
+
+# %%
+

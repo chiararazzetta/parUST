@@ -80,7 +80,7 @@ void sinc(float* t, int dim, float res, float* s, float dt, float d, int row, fl
     }
 }
 
-void hmat(float* centri, int row, float* point, int np, float vel, float dt, float* geom, int NL, float* im, float* times){
+void hmat(float* centri, int row, float* point, int np, float vel, float dt, int ntimes, float* geom, int NL, float* im, float* times){
     
     #pragma omp parallel for
     for (int m = 0; m < np; m++){
@@ -131,7 +131,7 @@ void hmat(float* centri, int row, float* point, int np, float vel, float dt, flo
         sinc(tsin, dim, res, s, dt, d[j], row, point[2]);
         int idx = find_t_min(t, tgrid, ntempi)+1;
         for (int k = 0; k < dim; k++)
-            {im[idx - NL + k + m * 300] = im[idx - NL + k + m * 300] + s[k];}
+            {im[idx - NL + k + m * ntimes] = im[idx - NL + k + m * ntimes] + s[k];}
     }
     
 

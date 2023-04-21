@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 pitch = 0.245e-3
 kerf = 0.035e-3
 elevation = 5e-3
-el = 96
+el = 50
 step = 0.25
 min_depth = 0.002
 max_depth = 0.042
@@ -28,10 +28,15 @@ cen = element_discr(pitch, kerf, elevation, Nx, Ny)
 
 H, A, grid, grid_dim = NarrowMaps(pitch, cen, geomf, el, c, dt, step, Nz, min_depth, max_depth, factor, f0)
 
-fNarrow = open('Maps/testNarrow.pkl', 'wb')
+fNarrow = open('testData/testNarrow.pkl', 'wb')
 pickle.dump([H, A, grid, grid_dim], fNarrow)
 fNarrow.close()
 # %%
+
+#### If you have precomputed maps:
+# fNarrow = open('testData/testNarrow.pkl', 'rb')
+# H, A, grid, grid_dim = pickle.load(fNarrow)
+# fNarrow.close()
 
 # Narrow BP computation Example
 focus = 0.025
@@ -45,3 +50,5 @@ BPdeci = todB(BP)
 
 plt.imshow(BPdeci, cmap = 'jet')
 
+
+# %%
