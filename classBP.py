@@ -14,8 +14,10 @@ from f_initialization import (
 from MapGeneration import WideMaps, NarrowMaps
 from BpCompute import std_del, NarrowBP, wideMapCut, WideBP, todB
 
-
 class BeamPattern:
+
+    """ Class cpntaining all the methods and the parameters for a Beam Pattern calculation
+    """    
     def __init__(
         self,
         BPtype="Narrow",
@@ -280,7 +282,3 @@ class BeamPattern:
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         plt.show()
-
-
-
-# %%
