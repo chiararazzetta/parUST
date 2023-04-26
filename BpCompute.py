@@ -75,19 +75,19 @@ def wideMapCut(NelImm, step, H, Nz, grid):
     """    
     n = int(1 / step)
     t = n * Nz
-    c = np.where(grid[:,0] == 0)[0][0]
+    centre = np.where(grid[:,0] == 0)[0][0]
     N = int(NelImm / 2)
 
     Mapsize = [t * NelImm, H.shape[1]]
     Maps = np.empty((NelImm, Mapsize[0], Mapsize[1]), dtype = complex)
 
     for i in range(-N, N):
-        sx = c - t * (N + i)
-        dx = c + t * (N - i)
+        sx = centre - t * (N + i)
+        dx = centre + t * (N - i)
 
         Maps[N + i, :, :] = H[sx: dx, :]
 
-    return Maps, n * NelImm, Nz, grid[c - t * N: c + t * N + Nz, :]
+    return Maps, n * NelImm, Nz, grid[centre - t * N: centre + t * N + Nz, :]
 
 # %% 
 def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq = None):

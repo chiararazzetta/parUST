@@ -96,8 +96,8 @@ class BeamPattern:
             "active_el": active_el,
             "wideH": None,
             "wideEl": wideEl,
-            "wideNx": self.field['Nx'],
-            "wideNz": self.field['Nz'],
+            "wideNx": self.field["Nx"],
+            "wideNz": self.field["Nz"],
             "wideGrid": self.field["grid_coord"],
         }
 
@@ -120,7 +120,6 @@ class BeamPattern:
             pickle.dump(
                 [
                     self.beam["H"],
-                    self.beam["A"],
                     self.field["grid_coord"],
                     self.field["Nx"],
                     self.field["Nz"],
@@ -143,11 +142,10 @@ class BeamPattern:
             self.field["Nz"] = znum
         elif self.BPtype == "Wide":
             fWide = open(path, "rb")
-            H, A, g, xnum, znum, idx = pickle.load(fWide)
+            H, g, xnum, znum, idx = pickle.load(fWide)
             fWide.close()
 
             self.beam["H"] = H
-            self.beam["A"] = A
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
@@ -175,7 +173,7 @@ class BeamPattern:
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
         elif self.BPtype == "Wide":
-            H, A, g, xnum, znum, idx = WideMaps(
+            H, xnum, znum, g, idx = WideMaps(
                 self.probe["pitch"],
                 self.probe["cen"],
                 self.probe["geomf"],
@@ -193,7 +191,6 @@ class BeamPattern:
             )
 
             self.beam["H"] = H
-            self.beam["A"] = A
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
@@ -222,18 +219,18 @@ class BeamPattern:
                 self.field["c"],
                 self.beam["active_el"],
             )
-            (
-                self.beam["wideH"],
-                self.beam["wideNx"],
-                self.beam["wideNz"],
-                self.beam["wideGrid"],
-            ) = wideMapCut(
+            maps, xnum, znum, g = wideMapCut(
                 self.beam["wideEl"],
                 self.field["step"],
                 self.beam["H"],
                 self.field["Nz"],
                 self.field["grid_coord"],
             )
+            self.beam["wideH"] = maps
+            self.beam["wideNx"] = xnum
+            self.beam["wideNz"] = znum
+            self.beam["wideGrid"] = g
+
             self.beam["BPlinear"] = WideBP(
                 self.beam["delays"],
                 self.beam["wideH"],
@@ -267,7 +264,7 @@ class BeamPattern:
         )
         ax.set_xticklabels(xticks)
 
-        ax.set_yticks(np.linspace(0, self.beam['wideNx'], 5))
+        ax.set_yticks(np.linspace(0, self.beam["wideNx"], 5))
         yticks = np.round(
             np.linspace(
                 np.min(self.beam["wideGrid"][:, 0]),
@@ -283,6 +280,7 @@ class BeamPattern:
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         plt.show()
+
 
 
 # %%
