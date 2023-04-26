@@ -27,16 +27,16 @@ factor = 0.3
 
 cen = element_discr(pitch, kerf, elevation, Nx, Ny)
 
-H, grid_dim, grid, index = WideMaps(pitch, cen, geomf, el, c, dt, step, Nz, min_depth, max_depth, factor, ntimes, pad, None)
+H, Nx, Nz, grid = WideMaps(pitch, cen, geomf, el, c, dt, step, Nz, min_depth, max_depth, factor, ntimes, pad, None)
 
 fWide = open('testData/testWide.pkl', 'wb')
-pickle.dump([H, grid_dim, grid, index], fWide)
+pickle.dump([H, Nx, Nz, grid], fWide)
 fWide.close()
 # %%
 
 #### If you have precomputed maps:
 # fWide = open('testData/testWide.pkl', 'rb')
-# H, grid_dim, grid, index = pickle.load(fWide)
+# H, Nx, Nz, grid, index = pickle.load(fWide)
 # fWide.close()
 
 # Wide BP computation Example
@@ -49,9 +49,9 @@ Nimm = 50
 rit = std_del(focus, pitch, c, active_el)
 I = sinusoidalPulse(f0, Ncycles, dt, ntimes, pad, None)
 
-maps, dim, grid_new = wideMapCut(Nimm, step, H, Nz, grid)
+maps, Xdim, Zdim, grid_new = wideMapCut(Nimm, step, H, Nz, grid)
 
-BP = WideBP(rit, maps, active_el, dt, ntimes, pad, dim[0], dim[1], I, None)
+BP = WideBP(rit, maps, active_el, dt, ntimes, pad, Xdim, Zdim, I, None)
 
 BPdeci = todB(BP)
 

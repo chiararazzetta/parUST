@@ -24,19 +24,19 @@ dt = 1e-8
 f0 = 4e6
 factor = 0.5
 
-cen = element_discr(pitch, kerf, elevation, Nx, Ny)
+# cen = element_discr(pitch, kerf, elevation, Nx, Ny)
 
-H, A, grid, grid_dim = NarrowMaps(pitch, cen, geomf, el, c, dt, step, Nz, min_depth, max_depth, factor, f0)
+# H, A, grid, Nx, Nz = NarrowMaps(pitch, cen, geomf, el, c, dt, step, Nz, min_depth, max_depth, factor, f0)
 
-fNarrow = open('testData/testNarrow.pkl', 'wb')
-pickle.dump([H, A, grid, grid_dim], fNarrow)
-fNarrow.close()
+# fNarrow = open('testData/testNarrow.pkl', 'wb')
+# pickle.dump([H, A, grid, Nx, Nz], fNarrow)
+# fNarrow.close()
 # %%
 
 #### If you have precomputed maps:
-# fNarrow = open('testData/testNarrow.pkl', 'rb')
-# H, A, grid, grid_dim = pickle.load(fNarrow)
-# fNarrow.close()
+fNarrow = open('testData/testNarrow.pkl', 'rb')
+H, A, grid, grid_dim = pickle.load(fNarrow)
+fNarrow.close()
 
 # Narrow BP computation Example
 focus = 0.025
@@ -49,6 +49,5 @@ BP = NarrowBP(rit, H, A, f0, active_el)
 BPdeci = todB(BP)
 
 plt.imshow(BPdeci, cmap = 'jet')
-
 
 # %%

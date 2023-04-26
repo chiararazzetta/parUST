@@ -211,7 +211,8 @@ def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
         numpy.complex: the maps array
         numpy.complex: the attenuation map
         numpy.float: the grid coordinates
-        list: the grid dimesions
+        int: the grid dimesions along x axis
+        int: the grid dimesions along z axis
     """    
     geom = rit_g(f_g, cen[:,1], c)
 
@@ -222,7 +223,7 @@ def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
     H = Parallel(n_jobs = int(cpu_count()), backend = "threading")(
                 delayed(parallelMapcompute)
                 (pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i) for i in range(nel))
-    return np.asarray(H), A, grid, [Nx, Nz]
+    return np.asarray(H), A, grid, Nx, Nz
 
 # %% 
 def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes, pad, path = None):
@@ -246,10 +247,11 @@ def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes
 
     Returns:
         numpy.complex: the attenuated map array
-        list: the grid dimesions
+        int: the grid dimesions along x axis
+        int: the grid dimesions along z axis
         numpy.float: the grid coordinates
         numpy.int: the grid indexes
-        list (optional): indexes of min and max the significant frequences
+        list: indexes of min and max the significant frequences
         
     """    
     geom = rit_g(f_g, cen[:,1], c)
@@ -259,15 +261,13 @@ def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes
     A = Wide_att_map(grid[:Nz,2], Nx, Nz, factor, ntimes, pad, dt)
 
     if path is None:
+        n_freq = None
         H = wideMap(c, dt, geom, grid, cen, ntimes, pad, A, None)
     else:
         r_probe, n_freq = resp_probe(path, ntimes, pad, step)
         H = wideMap(c, dt, geom, grid, cen, ntimes, pad, A, [r_probe, n_freq])
 
-    if path is None:
-        return H, [Nx, Nz], grid, indexes
-    else:
-        return H, [Nx, Nz], grid, indexes, n_freq
+    return H, Nx, Nz, grid, n_freq
 
 # %%
 

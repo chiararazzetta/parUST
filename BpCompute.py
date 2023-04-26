@@ -69,7 +69,8 @@ def wideMapCut(NelImm, step, H, Nz, grid):
 
     Returns:
         array.complex: set of maps for the desired elements
-        list: dimensions of the grid
+        int: the grid dimesions along x axis
+        int: the grid dimesions along z axis
         array.float: coordinates of the image grid
     """    
     n = int(1 / step)
@@ -86,7 +87,7 @@ def wideMapCut(NelImm, step, H, Nz, grid):
 
         Maps[N + i, :, :] = H[sx: dx, :]
 
-    return Maps, [n * NelImm, Nz], grid[c - t * N: c + t * N + Nz, :]
+    return Maps, n * NelImm, Nz, grid[c - t * N: c + t * N + Nz, :]
 
 # %% 
 def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq = None):
@@ -119,7 +120,7 @@ def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq = None):
     return np.reshape(power, (Nx, Nz))
 
 # %%
-def todB(BP):
+def todB(BP, cut = -40):
     """Function for computing the valuein deciBel of the Beam patterns
 
     Args:
@@ -131,7 +132,7 @@ def todB(BP):
     MaxC = np.max(np.max(BP))
     Cnorm = BP/MaxC
     Cnorm = 10 * np.log10(Cnorm)
-    Cnorm[Cnorm < -40] = -40
+    Cnorm[Cnorm < cut] = cut
     return Cnorm
 
 
