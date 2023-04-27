@@ -1,6 +1,7 @@
-# %% 
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 # %%
 def std_del(z_f, pitch, c, el):
@@ -14,10 +15,11 @@ def std_del(z_f, pitch, c, el):
 
     Returns:
         numpy.float: array containing standard delays
-    """    
-    return (z_f - np.sqrt(((0.5 + np.arange(0, el)) * pitch) ** 2 + z_f ** 2))/c
+    """
+    return (z_f - np.sqrt(((0.5 + np.arange(0, el)) * pitch) ** 2 + z_f**2)) / c
 
-def del_to_freq(delays, dt, ntimes, pad, nfreq = None):
+
+def del_to_freq(delays, dt, ntimes, pad, nfreq=None):
     """Function to pass the delays in time frequency domain
 
     Args:
@@ -29,15 +31,20 @@ def del_to_freq(delays, dt, ntimes, pad, nfreq = None):
 
     Returns:
         array.complex: array for the delays in frequency
-    """    
+    """
     if nfreq is None:
-        w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1), (delays.shape[0], 1 ))
+        w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1), (delays.shape[0], 1))
     else:
-        w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0] : nfreq[1]], (delays.shape[0], 1))[:, :(ntimes + pad) // 2]
+        w = np.tile(
+            np.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0] : nfreq[1]],
+            (delays.shape[0], 1),
+        )[:, : (ntimes + pad) // 2]
 
-    w = w[:, : int((ntimes +pad) / 2)]
+    w = w[:, : int((ntimes + pad) / 2)]
 
     return np.exp(-2 * np.pi * 1j * w * delays[:, np.newaxis])
+
+
 # %%
 def NarrowBP(delay, map, attenuation, f0, elements):
     """Function for Narrow Beam Pattern computation
@@ -51,10 +58,14 @@ def NarrowBP(delay, map, attenuation, f0, elements):
 
     Returns:
         numpy.float: beam pattern power values
-    """    
-    delayed = map[:elements, :, :] * np.exp(-2 * np.pi * 1j * f0 * delay)[:elements, np.newaxis, np.newaxis]
+    """
+    delayed = (
+        map[:elements, :, :]
+        * np.exp(-2 * np.pi * 1j * f0 * delay)[:elements, np.newaxis, np.newaxis]
+    )
     B = np.sum(delayed, axis=0)
     return (np.abs(B * attenuation)) ** 2
+
 
 # %%
 def wideMapCut(NelImm, step, H, Nz, grid):
@@ -72,25 +83,26 @@ def wideMapCut(NelImm, step, H, Nz, grid):
         int: the grid dimesions along x axis
         int: the grid dimesions along z axis
         array.float: coordinates of the image grid
-    """    
+    """
     n = int(1 / step)
     t = n * Nz
-    centre = np.where(grid[:,0] == 0)[0][0]
+    centre = np.where(grid[:, 0] == 0)[0][0]
     N = int(NelImm / 2)
 
     Mapsize = [t * NelImm, H.shape[1]]
-    Maps = np.empty((NelImm, Mapsize[0], Mapsize[1]), dtype = complex)
+    Maps = np.empty((NelImm, Mapsize[0], Mapsize[1]), dtype=complex)
 
     for i in range(-N, N):
         sx = centre - t * (N + i)
         dx = centre + t * (N - i)
 
-        Maps[N + i, :, :] = H[sx: dx, :]
+        Maps[N + i, :, :] = H[sx:dx, :]
 
-    return Maps, n * NelImm, Nz, grid[centre - t * N: centre + t * N + Nz, :]
+    return Maps, n * NelImm, Nz, grid[centre - t * N : centre + t * N + Nz, :]
 
-# %% 
-def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq = None):
+
+# %%
+def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq=None):
     """Function for generating Wide Band Beam Patterns
 
     Args:
@@ -107,20 +119,24 @@ def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq = None):
 
     Returns:
         array.float: beam pattern power values
-    """    
+    """
     e = np.concatenate((np.flipud(delay), delay))
     del_freq = del_to_freq(e, dt, ntimes, pad, nfreq)
 
     center = int(map.shape[0] / 2)
-    delayed = np.sum(map[center-elements:center+elements, :, :] * del_freq[:, np.newaxis, :], axis = 0)
-    
+    delayed = np.sum(
+        map[center - elements : center + elements, :, :] * del_freq[:, np.newaxis, :],
+        axis=0,
+    )
+
     pulsed = delayed * I[np.newaxis, :]
 
-    power = np.sum(np.abs(pulsed) ** 2, axis = 1)
+    power = np.sum(np.abs(pulsed) ** 2, axis=1)
     return np.reshape(power, (Nx, Nz))
 
+
 # %%
-def todB(BP, cut = -40):
+def todB(BP, cut=-40):
     """Function for computing the valuein deciBel of the Beam patterns
 
     Args:
@@ -128,9 +144,9 @@ def todB(BP, cut = -40):
 
     Returns:
         numpy.float: beam pattern deciBel values
-    """    
+    """
     MaxC = np.max(np.max(BP))
-    Cnorm = BP/MaxC
+    Cnorm = BP / MaxC
     Cnorm = 10 * np.log10(Cnorm)
     Cnorm[Cnorm < cut] = cut
     return Cnorm

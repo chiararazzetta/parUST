@@ -14,10 +14,11 @@ from f_initialization import (
 from MapGeneration import WideMaps, NarrowMaps
 from BpCompute import std_del, NarrowBP, wideMapCut, WideBP, todB
 
+
 class BeamPattern:
 
-    """ Class cpntaining all the methods and the parameters for a Beam Pattern calculation
-    """    
+    """Class cpntaining all the methods and the parameters for a Beam Pattern calculation"""
+
     def __init__(
         self,
         BPtype="Narrow",
@@ -101,6 +102,12 @@ class BeamPattern:
             "wideNx": self.field["Nx"],
             "wideNz": self.field["Nz"],
             "wideGrid": self.field["grid_coord"],
+            "delays": std_del(
+                self.beam["focus"],
+                self.probe["pitch"],
+                self.field["c"],
+                self.beam["active_el"],
+            ),
         }
 
     def SaveMaps(self, path):
@@ -200,12 +207,6 @@ class BeamPattern:
 
     def BPcalculate(self):
         if self.BPtype == "Narrow":
-            self.beam["delays"] = std_del(
-                self.beam["focus"],
-                self.probe["pitch"],
-                self.field["c"],
-                self.beam["active_el"],
-            )
             self.beam["BPlinear"] = NarrowBP(
                 self.beam["delays"],
                 self.beam["H"],
@@ -215,12 +216,6 @@ class BeamPattern:
             )
             self.beam["BPdecibel"] = todB(self.beam["BPlinear"])
         elif self.BPtype == "Wide":
-            self.beam["delays"] = std_del(
-                self.beam["focus"],
-                self.probe["pitch"],
-                self.field["c"],
-                self.beam["active_el"],
-            )
             maps, xnum, znum, g = wideMapCut(
                 self.beam["wideEl"],
                 self.field["step"],

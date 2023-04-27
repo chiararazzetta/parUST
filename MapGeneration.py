@@ -11,28 +11,30 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 
 from f_initialization import rit_g, grid_create, grid_create, resp_probe
+
 # %%
-risplib = load_library('matrix.so', '.')
+risplib = load_library("matrix.so", ".")
 
 H = risplib.hmat
 
 H.restype = ndpointer(ctypes.c_float)
-H.argtypes = [ndpointer(ctypes.c_float),
-              ctypes.c_int,
-              ndpointer(ctypes.c_float),
-              ctypes.c_int,
-              ctypes.c_float,
-              ctypes.c_float,
-              ctypes.c_int,
-              ndpointer(ctypes.c_float),
-              ctypes.c_int,
-              ndpointer(ctypes.c_float),
-              ndpointer(ctypes.c_float)
-              ]
+H.argtypes = [
+    ndpointer(ctypes.c_float),
+    ctypes.c_int,
+    ndpointer(ctypes.c_float),
+    ctypes.c_int,
+    ctypes.c_float,
+    ctypes.c_float,
+    ctypes.c_int,
+    ndpointer(ctypes.c_float),
+    ctypes.c_int,
+    ndpointer(ctypes.c_float),
+    ndpointer(ctypes.c_float),
+]
 
 
 def mrisptopy(cen, p, v, dt, g, ntimes):
-    """ Function to link python objects to c function
+    """Function to link python objects to c function
 
     Args:
         cen (numpy.float): array containing the coordinates of element discretization points
@@ -46,18 +48,20 @@ def mrisptopy(cen, p, v, dt, g, ntimes):
     """
     row = cen.shape[0]
     npunti = p.shape[0]
-    h = np.zeros((npunti, ntimes), dtype = np.float32)
-    t = np.zeros(npunti, dtype = np.float32)
-    
+    h = np.zeros((npunti, ntimes), dtype=np.float32)
+    t = np.zeros(npunti, dtype=np.float32)
+
     H(cen, row, p, npunti, v, dt, ntimes, g, 1, h, t)
-    
-    return h/row, t
+
+    return h / row, t
+
 
 # %%
 
+
 def narrowMap(pitch, c, dt, geom, grid, Nx, Nz, idx, cen, f0):
-    """ Function to generate a impulse response map for a grid of points and a fixed probe element
-        in Narrow Band pulse transmission setting, with mono frequency approximation 
+    """Function to generate a impulse response map for a grid of points and a fixed probe element
+        in Narrow Band pulse transmission setting, with mono frequency approximation
 
     Args:
         pitch (float): element length for translations on the probe
@@ -86,12 +90,14 @@ def narrowMap(pitch, c, dt, geom, grid, Nx, Nz, idx, cen, f0):
 
     return np.reshape(H, (Nx, Nz))
 
+
 # %%
 
-def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe = None):
-    """ Function to generate a impulse response map for a grid of points and a fixed probe element
+
+def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe=None):
+    """Function to generate a impulse response map for a grid of points and a fixed probe element
         in Wide Band pulse transmission setting
-    
+
     Args:
         c (float): medium speed
         dt (float): time step
@@ -101,41 +107,43 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe = None):
         nt (int): maximum number of temporal instant
         pad (int): number of zero for signals padding
         A (numpy.float): array containing the attenuation coefficients
-    
+
     Optional Args:
         hprobe (list): if it is possible to have a measurements of the probe impulse response, we cut the significant frequencies
                        and take in account its shape
 
     Returns:
         numpy.complex: array containing the collection of the impulse responses
-    """       
+    """
 
     h, t = mrisptopy(cen, grid, c, dt, geom, nt)
     h = np.pad(h, ((0, 0), (pad, 0)))
 
-
     h = scipy.fft.fft(h, axis=1)
-    h = h[:, :(nt + pad) // 2]
+    h = h[:, : (nt + pad) // 2]
 
     trif = t - grid[:, 2] / c
 
-    freq = scipy.fft.fftfreq(nt + pad, dt)[:(nt + pad) // 2]
+    freq = scipy.fft.fftfreq(nt + pad, dt)[: (nt + pad) // 2]
     freq = np.repeat(freq.reshape([1, (nt + pad) // 2]), trif.shape, axis=0)
 
     if hprobe is None:
         phase = np.exp(-2 * math.pi * 1j * freq * trif[:, np.newaxis])
-        h = h * phase  * A
-    else: 
+        h = h * phase * A
+    else:
         hp = hprobe[0]
         dim = hprobe[1]
-        phase = np.exp(-2 * math.pi * 1j *freq[:, dim[0]:dim[1]] * trif[:, np.newaxis])
-        h = h[:, dim[0]:dim[1]] * phase * hp[np.newaxis, :] * A[:, dim[0]:dim[1]]
+        phase = np.exp(
+            -2 * math.pi * 1j * freq[:, dim[0] : dim[1]] * trif[:, np.newaxis]
+        )
+        h = h[:, dim[0] : dim[1]] * phase * hp[np.newaxis, :] * A[:, dim[0] : dim[1]]
 
     return h
 
+
 # %%
 def Narrow_att_map(coordz, f0, factor, N):
-    """ Function for computing the attenuation map in single frequency Narrow Band case
+    """Function for computing the attenuation map in single frequency Narrow Band case
 
     Args:
         coordz (numpy.float): array containing all the possible depths in the field
@@ -146,15 +154,17 @@ def Narrow_att_map(coordz, f0, factor, N):
     Returns:
         numpy.complex: array containing the attenuation map with grid size
     """
-    
-    attmap = 10 ** ((-factor/20) * (f0 * coordz)/(10 ** 4))
+
+    attmap = 10 ** ((-factor / 20) * (f0 * coordz) / (10**4))
 
     return np.tile(attmap, (N, 1))
 
-#%% 
+
+# %%
+
 
 def Wide_att_map(coordz, Nx, Nz, factor, nt, pad, dt):
-    """ Function for computing the attenuation map in Wide Band case
+    """Function for computing the attenuation map in Wide Band case
 
     Args:
         coordz (numpy.float): array containing all the possible depths in the field
@@ -167,32 +177,37 @@ def Wide_att_map(coordz, Nx, Nz, factor, nt, pad, dt):
 
     Returns:
         numpy.complex: array containing the attenuation map with grid size
-    """    
-    w = np.linspace(0, 1/dt, pad + nt + 1)
+    """
+    w = np.linspace(0, 1 / dt, pad + nt + 1)
     wreal = np.abs(w[0 : (nt + pad) // 2])
 
     attmap = np.empty([Nz, (nt + pad) // 2])
 
     for i in range(Nz):
-        attmap[i, :] = 10 ** (-factor * coordz[i] * wreal / (10 ** 5))
+        attmap[i, :] = 10 ** (-factor * coordz[i] * wreal / (10**5))
 
-    return np.tile(attmap, (Nx,1))
+    return np.tile(attmap, (Nx, 1))
+
 
 # %%
 
-def parallelMapcompute(pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i):
+
+def parallelMapcompute(
+    pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i
+):
     """
-        Auxiliar function for parallelizing maps computing
+    Auxiliar function for parallelizing maps computing
     """
     grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
     H1 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, i + 0.5, cen, f0)
     grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
-    H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i-1+0.5, cen, f0)
+    H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i - 1 + 0.5, cen, f0)
     return H1 + H2
+
 
 def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
     """Function for the parallel computing of Narrow maps for multiple element
-    
+
     Args:
         pitch (float): element length for translations on the probe
         cen (numpy.float): array containing the coordinates of element discretization points
@@ -213,20 +228,26 @@ def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
         numpy.float: the grid coordinates
         int: the grid dimesions along x axis
         int: the grid dimesions along z axis
-    """    
-    geom = rit_g(f_g, cen[:,1], c)
+    """
+    geom = rit_g(f_g, cen[:, 1], c)
 
     grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
 
-    A = Narrow_att_map(grid[:Nz,2], f0, factor, Nx)
+    A = Narrow_att_map(grid[:Nz, 2], f0, factor, Nx)
 
-    H = Parallel(n_jobs = int(cpu_count()), backend = "threading")(
-                delayed(parallelMapcompute)
-                (pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i) for i in range(nel))
+    H = Parallel(n_jobs=int(cpu_count()), backend="threading")(
+        delayed(parallelMapcompute)(
+            pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i
+        )
+        for i in range(nel)
+    )
     return np.asarray(H), A, grid, Nx, Nz
 
-# %% 
-def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes, pad, path = None):
+
+# %%
+def WideMaps(
+    pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes, pad, path=None
+):
     """Function to generate an overall map for the central element of the probe, taking in acount the symmetry of the field
 
     Args:
@@ -252,13 +273,13 @@ def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes
         numpy.float: the grid coordinates
         numpy.int: the grid indexes
         list: indexes of min and max the significant frequences
-        
-    """    
-    geom = rit_g(f_g, cen[:,1], c)
+
+    """
+    geom = rit_g(f_g, cen[:, 1], c)
 
     grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
 
-    A = Wide_att_map(grid[:Nz,2], Nx, Nz, factor, ntimes, pad, dt)
+    A = Wide_att_map(grid[:Nz, 2], Nx, Nz, factor, ntimes, pad, dt)
 
     if path is None:
         n_freq = None
@@ -269,5 +290,5 @@ def WideMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, ntimes
 
     return H, Nx, Nz, grid, n_freq
 
-# %%
 
+# %%
