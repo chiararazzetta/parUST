@@ -36,13 +36,14 @@ class BeamPattern:
         kerf=0.035e-3,
         elevation=5e-3,
         geomf=0.025,
+        Nprobe = 192,
         n_xdiscr=40,
-        n_ydiscr=100,
+        n_ydiscr=150,
         f0=4.5e6,
         Ncycles=3,
         focus=0.025,
         active_el=15,
-        wideEl=50,
+        wideEl=100,
         probe_respTXT=None,
     ):
         self.BPtype = BPtype
@@ -65,6 +66,7 @@ class BeamPattern:
             "kerf": kerf,
             "elevation": elevation,
             "geomf": geomf,
+            "N_el": Nprobe,
             "Nx": n_xdiscr,
             "Ny": n_ydiscr,
             "cen": element_discr(pitch, kerf, elevation, n_xdiscr, n_ydiscr),
@@ -102,13 +104,13 @@ class BeamPattern:
             "wideNx": self.field["Nx"],
             "wideNz": self.field["Nz"],
             "wideGrid": self.field["grid_coord"],
-            "delays": std_del(
+        }
+        self.beam["delays"] = std_del(
                 self.beam["focus"],
                 self.probe["pitch"],
                 self.field["c"],
                 self.beam["active_el"],
-            ),
-        }
+            )
 
     def SaveMaps(self, path):
         if self.BPtype == "Narrow":
@@ -186,7 +188,7 @@ class BeamPattern:
                 self.probe["pitch"],
                 self.probe["cen"],
                 self.probe["geomf"],
-                self.field["Nelfield"],
+                self.probe["N_el"],
                 self.field["c"],
                 self.field["dt"],
                 self.field["step"],

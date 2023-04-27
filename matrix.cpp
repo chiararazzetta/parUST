@@ -65,17 +65,19 @@ void sinc(float* t, int dim, float res, float* s, float dt, float d, int row, fl
     /*if (dim <= 0 || row <= 0)
         {throw("La taglia del vettore deve essere positiva");}*/
     
-    float soft = (point/sqrt(pow(point,2)+pow(d,2)));
+    /* Soft baffle apodization implyies to multiply for cos(alpha) = z / d, to include
+        geometric attenuation multiply by 1/d */
+    float soft = (point/pow(d, 2)); //1/d; 
 
     for (int i = 0; i < dim; i++)
     {  
         float aux = t[i] - (res/dt);
         if (aux == 0)
-            {s[i] = 1/soft/d;}
+            {s[i] = soft;}
         else
             {
                 float arg = M_PI*aux;
-                s[i] = sin(arg)/(arg)*soft/d;
+                s[i] = (sin(arg)/(arg))*soft;
             }
     }
 }
@@ -128,7 +130,7 @@ void hmat(float* centri, int row, float* point, int np, float vel, float dt, int
         
         float tgrid = dt*round(rit[j]/dt);
         float res = tgrid-rit[j];
-        sinc(tsin, dim, res, s, dt, d[j], row, point[2]);
+        sinc(tsin, dim, res, s, dt, d[j], row, point[2+m*3]);
         int idx = find_t_min(t, tgrid, ntempi)+1;
         for (int k = 0; k < dim; k++)
             {im[idx - NL + k + m * ntimes] = im[idx - NL + k + m * ntimes] + s[k];}

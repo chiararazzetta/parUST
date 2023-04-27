@@ -124,7 +124,7 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe=None):
 
     trif = t - grid[:, 2] / c
 
-    freq = scipy.fft.fftfreq(nt + pad, dt)[: (nt + pad) // 2]
+    freq = np.linspace(0, 1 / dt, pad + nt + 1)[: (nt + pad) // 2]
     freq = np.repeat(freq.reshape([1, (nt + pad) // 2]), trif.shape, axis=0)
 
     if hprobe is None:
@@ -179,12 +179,12 @@ def Wide_att_map(coordz, Nx, Nz, factor, nt, pad, dt):
         numpy.complex: array containing the attenuation map with grid size
     """
     w = np.linspace(0, 1 / dt, pad + nt + 1)
-    wreal = np.abs(w[0 : (nt + pad) // 2])
+    wreal = w[0 : (nt + pad) // 2]
 
     attmap = np.empty([Nz, (nt + pad) // 2])
 
     for i in range(Nz):
-        attmap[i, :] = 10 ** (-factor * coordz[i] * wreal / (10**5))
+        attmap[i, :] = 10 ** ((-factor / 20 ) * (coordz[i] * wreal) / (10**4))
 
     return np.tile(attmap, (Nx, 1))
 
