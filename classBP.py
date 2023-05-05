@@ -43,7 +43,7 @@ class BeamPattern:
         Ncycles=3,
         focus=0.025,
         active_el=15,
-        wideEl=100,
+        wideEl=70,
         probe_respTXT=None,
     ):
         self.BPtype = BPtype
@@ -104,7 +104,16 @@ class BeamPattern:
             "wideNx": self.field["Nx"],
             "wideNz": self.field["Nz"],
             "wideGrid": self.field["grid_coord"],
+            "dbCut": -40
         }
+        self.beam["delays"] = std_del(
+                self.beam["focus"],
+                self.probe["pitch"],
+                self.field["c"],
+                self.beam["active_el"],
+            )
+    
+    def DelaysUpdate(self):
         self.beam["delays"] = std_del(
                 self.beam["focus"],
                 self.probe["pitch"],
@@ -151,6 +160,7 @@ class BeamPattern:
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
+            self.beam["wideGrid"] = g
         elif self.BPtype == "Wide":
             fWide = open(path, "rb")
             H, g, xnum, znum, idx = pickle.load(fWide)
@@ -207,7 +217,7 @@ class BeamPattern:
             self.field["Nz"] = znum
             self.probe["idx_freq"] = idx
 
-    def BPcalculate(self):
+    def BPcompute(self):
         if self.BPtype == "Narrow":
             self.beam["BPlinear"] = NarrowBP(
                 self.beam["delays"],
@@ -216,7 +226,7 @@ class BeamPattern:
                 self.pulse["f0"],
                 self.beam["active_el"],
             )
-            self.beam["BPdecibel"] = todB(self.beam["BPlinear"])
+            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"])
         elif self.BPtype == "Wide":
             maps, xnum, znum, g = wideMapCut(
                 self.beam["wideEl"],
@@ -242,7 +252,7 @@ class BeamPattern:
                 self.pulse["Pulse"],
                 self.probe["idx_freq"],
             )
-            self.beam["BPdecibel"] = todB(self.beam["BPlinear"])
+            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"])
 
     def BPplot(self):
         plt.rcParams["axes.autolimit_mode"] = "round_numbers"
