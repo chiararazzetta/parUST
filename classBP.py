@@ -27,7 +27,7 @@ class BeamPattern:
         min_d=0.002,
         max_d=0.042,
         step=0.25,
-        Nel=50,
+        Nel=70,
         Ndepth=400,
         factor=0.5,
         ntimes=1800,

@@ -117,7 +117,7 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe=None):
     """
 
     h, t = mrisptopy(cen, grid, c, dt, geom, nt)
-    h = np.pad(h, ((0, 0), (pad, 0)))
+    h = np.pad(h, ((0, 0), (int(pad/2), int(pad/2))))
 
     h = scipy.fft.fft(h, axis=1)
     h = h[:, : (nt + pad) // 2]

@@ -2,4 +2,4 @@ numpy
 scipy
 joblib
 matplotlib
-multiprocessing
+multiprocess
