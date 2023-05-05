@@ -4,3 +4,4 @@ matrix.so
 mainNarrow.py
 mainWide.py
 __pycache__
+.vscode
