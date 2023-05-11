@@ -17,7 +17,7 @@ from BpCompute import std_del, NarrowBP, wideMapCut, WideBP, todB
 
 class BeamPattern:
 
-    """Class cpntaining all the methods and the parameters for a Beam Pattern calculation"""
+    """Class containing all the methods and the parameters for a Beam Pattern calculation"""
 
     def __init__(
         self,
@@ -27,7 +27,6 @@ class BeamPattern:
         min_d=0.002,
         max_d=0.042,
         step=0.25,
-        Nel=70,
         Ndepth=400,
         factor=0.5,
         ntimes=1800,
@@ -36,7 +35,7 @@ class BeamPattern:
         kerf=0.035e-3,
         elevation=5e-3,
         geomf=0.025,
-        Nprobe = 192,
+        Nprobe=192,
         n_xdiscr=40,
         n_ydiscr=150,
         f0=4.5e6,
@@ -54,7 +53,6 @@ class BeamPattern:
             "min_depth": min_d,
             "max_depth": max_d,
             "step": step,
-            "Nelfield": Nel,
             "Nz": Ndepth,
             "att_factor": factor,
             "ntimes": ntimes,
@@ -82,7 +80,7 @@ class BeamPattern:
             self.probe["respProbe"] = resp
             self.probe["idx_freq"] = idx
 
-        gr, idx, nx = grid_create(pitch, Nel, step, Ndepth, min_d, max_d)
+        gr, idx, nx = grid_create(pitch, Nprobe, step, Ndepth, min_d, max_d)
         self.field["grid_coord"] = gr
         self.field["Nx"] = nx
 
@@ -91,7 +89,7 @@ class BeamPattern:
             "Ncycles": Ncycles,
             "Pulse": sinusoidalPulse(
                 f0, Ncycles, dt, ntimes, pad, self.probe["idx_freq"]
-            ),
+            )
         }
 
         self.beam = {
@@ -104,22 +102,26 @@ class BeamPattern:
             "wideNx": self.field["Nx"],
             "wideNz": self.field["Nz"],
             "wideGrid": self.field["grid_coord"],
-            "dbCut": -40
+            "dbCut": -40,
         }
         self.beam["delays"] = std_del(
+            self.beam["focus"],
+            self.probe["pitch"],
+            self.field["c"],
+            self.beam["active_el"],
+        )
+        
+    def DelaysSet(self, free_del=None):
+        if free_del is None:
+            self.beam["delays"] = std_del(
                 self.beam["focus"],
                 self.probe["pitch"],
                 self.field["c"],
                 self.beam["active_el"],
             )
-    
-    def DelaysUpdate(self):
-        self.beam["delays"] = std_del(
-                self.beam["focus"],
-                self.probe["pitch"],
-                self.field["c"],
-                self.beam["active_el"],
-            )
+        else:
+            self.beam["delays"] = free_del
+            self.beam["focus"] = None
 
     def SaveMaps(self, path):
         if self.BPtype == "Narrow":
@@ -155,8 +157,8 @@ class BeamPattern:
             H, A, g, xnum, znum = pickle.load(fNarrow)
             fNarrow.close()
 
-            self.beam["H"] = H
-            self.beam["A"] = A
+            self.beam["H"] = np.asarray(H)
+            self.beam["A"] = np.asarray(A)
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
@@ -175,24 +177,29 @@ class BeamPattern:
     def MapsCompute(self):
         if self.BPtype == "Narrow":
             H, A, g, xnum, znum = NarrowMaps(
-                self.probe["pitch"],
-                self.probe["cen"],
-                self.probe["geomf"],
-                self.field["Nelfield"],
-                self.field["c"],
-                self.field["dt"],
-                self.field["step"],
-                self.field["Nz"],
-                self.field["min_depth"],
-                self.field["max_depth"],
-                self.field["att_factor"],
-                self.pulse["f0"],
+            self.probe["pitch"],
+            self.field["c"],
+            self.field["dt"],
+            self.probe["geomf"], 
+            self.field["step"],
+            self.field["Nz"], 
+            self.field["min_depth"],
+            self.field["max_depth"],
+            self.field["att_factor"],
+            self.probe["cen"],
+            self.pulse["f0"],
+            self.probe["N_el"],
+            self.beam["wideEl"],
             )
+
             self.beam["H"] = H
             self.beam["A"] = A
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
+            self.beam["wideNx"] = xnum
+            self.beam["wideNz"] = znum
+            self.beam["wideGrid"] = g
         elif self.BPtype == "Wide":
             H, xnum, znum, g, idx = WideMaps(
                 self.probe["pitch"],

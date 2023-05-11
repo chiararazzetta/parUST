@@ -59,41 +59,6 @@ def mrisptopy(cen, p, v, dt, g, ntimes):
 # %%
 
 
-def narrowMap(pitch, c, dt, geom, grid, Nx, Nz, idx, cen, f0):
-    """Function to generate a impulse response map for a grid of points and a fixed probe element
-        in Narrow Band pulse transmission setting, with mono frequency approximation
-
-    Args:
-        pitch (float): element length for translations on the probe
-        c (float): medium speed
-        dt (float): time step
-        geom (numpy.float): array containing the geometric delays to simulate the probe lens
-        grid (numpy.float): array containing the coordinates of the points of the field
-        Nx (int): grid size along xaxis
-        Nz (int): grid size along zaxis
-        idx (int): index of the currently processed element
-        cen (numpy.float): array containing the coordinates of element discretization points
-        f0 (float): central frequency of the narrow pulse
-
-    Returns:
-        list: a numpy array containing the collection of the impulse responses, a tuple containing the grid dimensions
-    """
-    T = np.arange(0, 300 * dt, dt)
-    phase = np.exp(-2 * math.pi * 1j * T * f0)
-
-    grid[:, 0] -= (idx) * pitch
-    h, t = mrisptopy(cen, grid, c, dt, geom, 300)
-
-    trif = t - grid[:, 2] / c
-    h = np.sum(h * phase, 1)
-    H = h * np.exp(-2 * math.pi * 1j * f0 * trif)
-
-    return np.reshape(H, (Nx, Nz))
-
-
-# %%
-
-
 def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe=None):
     """Function to generate a impulse response map for a grid of points and a fixed probe element
         in Wide Band pulse transmission setting
@@ -190,59 +155,67 @@ def Wide_att_map(coordz, Nx, Nz, factor, nt, pad, dt):
 
 
 # %%
-
-
-def parallelMapcompute(
-    pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i
-):
-    """
-    Auxiliar function for parallelizing maps computing
-    """
-    grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
-    H1 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, i + 0.5, cen, f0)
-    grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
-    H2 = narrowMap(pitch, c, dt, geom, grid, Nx, Nz, -i - 1 + 0.5, cen, f0)
-    return H1 + H2
-
-
-def NarrowMaps(pitch, cen, f_g, nel, c, dt, step, Nz, min_d, max_d, factor, f0):
-    """Function for the parallel computing of Narrow maps for multiple element
+#%%
+def NarrowMaps(pitch, c, dt, f_g, step, Nz, min_d, max_d, factor, cen, f0, Nel, NelImm):
+    """Function to generate a impulse response map for a grid of points and a fixed probe element
+        in Narrow Band pulse transmission setting, with mono frequency approximation
 
     Args:
         pitch (float): element length for translations on the probe
-        cen (numpy.float): array containing the coordinates of element discretization points
-        f_g (float): geometrical focus of the probe
-        nel (int): number of elements of the probe to be considered
         c (float): medium speed
         dt (float): time step
+        f_g (float): geometrical focus
         step (float): fractional part of the probe element for spacing the x coordinates
         Nz (int): number of points along depth
         min_d (float): minimum depth
         max_d (float): maximum depth
         factor (float): attenuation factor
-        f0 (float): transmission frequency
+        cen (numpy.float): array containing the coordinates of element discretization points
+        f0 (float): central frequency of the narrow pulse
+        Nel (int): number of probe elements
+        NelImm (int): number of image elements
 
     Returns:
         numpy.complex: the maps array
-        numpy.complex: the attenuation map
+        numpy.complex: the attenuation array
         numpy.float: the grid coordinates
         int: the grid dimesions along x axis
         int: the grid dimesions along z axis
     """
     geom = rit_g(f_g, cen[:, 1], c)
 
-    grid, indexes, Nx = grid_create(pitch, nel, step, Nz, min_d, max_d)
+    grid, indexes, Nx = grid_create(pitch, Nel, step, Nz, min_d, max_d)
+
+
+    T = np.arange(0, 300 * dt, dt)
+    phase = np.exp(-2 * math.pi * 1j * T * f0)
+
+    h, t = mrisptopy(cen, grid, c, dt, geom, 300)
+
+    trif = t - grid[:, 2] / c
+    h = np.sum(h * phase, 1)
+    H = h * np.exp(-2 * math.pi * 1j * f0 * trif)
+
+    n = int(1 / step)
+    t = n * Nz
+    centre = np.where(grid[:, 0] == 0)[0][0]
+    N = int(NelImm / 2)
+    Nx = n * NelImm
 
     A = Narrow_att_map(grid[:Nz, 2], f0, factor, Nx)
 
-    H = Parallel(n_jobs=int(cpu_count()), backend="threading")(
-        delayed(parallelMapcompute)(
-            pitch, c, dt, geom, grid, nel, step, Nx, Nz, cen, f0, min_d, max_d, i
-        )
-        for i in range(nel)
-    )
-    return np.asarray(H), A, grid, Nx, Nz
+    Maps = np.zeros((N, Nx, Nz), dtype=complex)
 
+    for i in range(-N, N):
+        sx = centre - t * (N + i)
+        dx = centre + t * (N - i)
+
+        if i < 0:
+            Maps[-i - 1, :, :] = Maps[-i -1, :, :] + np.reshape(H[sx:dx], (Nx, Nz))
+        else:
+            Maps[i, :, :] = Maps[i, :, :] + np.reshape(H[sx:dx], (Nx, Nz))
+    
+    return Maps, A, grid[centre - t * N : centre + t * N + Nz, :], Nx, Nz
 
 # %%
 def WideMaps(
