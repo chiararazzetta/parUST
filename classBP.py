@@ -3,6 +3,7 @@ import pickle
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
+import cupy as cp
 
 from f_initialization import (
     grid_create,
@@ -44,8 +45,10 @@ class BeamPattern:
         active_el=15,
         wideEl=70,
         probe_respTXT=None,
+        device = "cpu"
     ):
         self.BPtype = BPtype
+        self.device = device
 
         self.field = {
             "c": c,
@@ -88,7 +91,7 @@ class BeamPattern:
             "f0": f0,
             "Ncycles": Ncycles,
             "Pulse": sinusoidalPulse(
-                f0, Ncycles, dt, ntimes, pad, self.probe["idx_freq"]
+                f0, Ncycles, dt, ntimes, pad, self.probe["idx_freq"], device
             )
         }
 
@@ -118,6 +121,7 @@ class BeamPattern:
                 self.probe["pitch"],
                 self.field["c"],
                 self.beam["active_el"],
+                self.device
             )
         else:
             self.beam["delays"] = free_del
@@ -189,7 +193,7 @@ class BeamPattern:
             self.probe["cen"],
             self.pulse["f0"],
             self.probe["N_el"],
-            self.beam["wideEl"],
+            self.beam["wideEl"]
             )
 
             self.beam["H"] = H
@@ -215,7 +219,7 @@ class BeamPattern:
                 self.field["att_factor"],
                 self.field["ntimes"],
                 self.field["pad"],
-                self.probe["pathProbeResp"],
+                self.probe["pathProbeResp"]
             )
 
             self.beam["H"] = H
@@ -232,8 +236,9 @@ class BeamPattern:
                 self.beam["A"],
                 self.pulse["f0"],
                 self.beam["active_el"],
+                self.device
             )
-            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"])
+            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"], self.device)
         elif self.BPtype == "Wide":
             maps, xnum, znum, g = wideMapCut(
                 self.beam["wideEl"],
@@ -258,21 +263,34 @@ class BeamPattern:
                 self.beam["wideNz"],
                 self.pulse["Pulse"],
                 self.probe["idx_freq"],
+                self.device
             )
-            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"])
+            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"], self.device)
 
     def BPplot(self):
+        if self.device == "cpu":
+            BP = self.beam["BPdecibel"]
+            N = self.beam["wideNz"]
+            G = self.beam["wideGrid"]
+            X = self.beam["wideNx"]
+        elif self.device == "gpu":
+            BP = cp.asnumpy(self.beam["BPdecibel"])
+            N = cp.asnumpy(self.beam["wideNz"])
+            G = cp.asnumpy(self.beam["wideGrid"])
+            X = cp.asnumpy(self.beam["wideNx"])
+            
+
         plt.rcParams["axes.autolimit_mode"] = "round_numbers"
         fig, ax = plt.subplots()
         ax.set_xlabel("Depth (mm)")
         ax.set_ylabel("Probe Line (mm)")
-        im = ax.imshow(self.beam["BPdecibel"], cmap="jet")
+        im = ax.imshow(BP, cmap="jet")
 
-        ax.set_xticks(np.linspace(0, self.beam["wideNz"], 5))
+        ax.set_xticks(np.linspace(0, N, 5))
         xticks = np.round(
             np.linspace(
-                np.min(self.beam["wideGrid"][:, 2]),
-                np.max(self.beam["wideGrid"][:, 2]),
+                np.min(G[:, 2]),
+                np.max(G[:, 2]),
                 5,
             )
             * 1e3,
@@ -280,11 +298,11 @@ class BeamPattern:
         )
         ax.set_xticklabels(xticks)
 
-        ax.set_yticks(np.linspace(0, self.beam["wideNx"], 5))
+        ax.set_yticks(np.linspace(0, X, 5))
         yticks = np.round(
             np.linspace(
-                np.min(self.beam["wideGrid"][:, 0]),
-                np.max(self.beam["wideGrid"][:, 0]),
+                np.min(G[:, 0]),
+                np.max(G[:, 0]),
                 5,
             )
             * 1e3,
