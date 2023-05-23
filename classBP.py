@@ -175,9 +175,7 @@ class BeamPattern:
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
-            self.beam["NX"] = xnum
-            self.beam["NZ"] = znum
-            self.beam["wideGrid"] = g
+            
         elif self.BPtype == "Wide":
             fWide = open(path, "rb")
             H, g, xnum, znum, idx = pickle.load(fWide)
