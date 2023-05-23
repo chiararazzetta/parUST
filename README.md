@@ -4,6 +4,7 @@ In detail, the code consists into two different approaches of beam pattern compu
 Furthermore, it makes use of some approximations and exploits geometrical simmetries as described in [1].
 The simulation consists in computing or loading an approximation of the impulse responses maps for a choice of probe and a field of research [2], and computing the beam pattern 
 as the power of the signal in time that crosses a point of the field having fixed a number of active element, a pulse emitted and a set of delays.
+The computation is performed on CPU cores. For the Beam Pattern computation it is implemented a GPU version.
 
 
 [1] Cit archivio paper teorico nostro ?
@@ -11,7 +12,7 @@ as the power of the signal in time that crosses a point of the field having fixe
 [2] J. A. Jensen. A new calculation procedure for spatial impulse responses in ultrasound. The Journal of the Acoustical Society of America, 105(6):3266–3274, 06 1999
 
 # Usage
-Code is written in Python 3.8 but it makes use of a c++ code embedded inthe computations. The repository contains a docker file to automatically set the environment for Python and c++. Please note the container enables the use of all the available GPUs. If you do not have the GPU cores, you need to edit the container file end remove line 16-19.
+Code is written in Python 3.8 but it makes use of a c++ code embedded inthe computations. The repository contains a docker file to automatically set the environment for Python and c++. Please note the container enables the use of all the available GPUs. If you do not have the GPU cores, you need to edit the container file end remove line 16-19 and the requirements file removing the last two lines.
 Concerning the c++ code, it is needed the compilation on the code 'matrix.cpp'.
 
 We have compiled the file with g++ (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0 compiler by the following two steps:
