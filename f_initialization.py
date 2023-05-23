@@ -6,7 +6,7 @@ import scipy
 
 
 # %%
-def grid_create(pitch, el, step, Nz, min_depth, max_depth, device = "cpu"):
+def grid_create(pitch, el, step, Nz, min_depth, max_depth, device="cpu"):
     """Function for computing grid specifications
 
     Args:
@@ -19,7 +19,7 @@ def grid_create(pitch, el, step, Nz, min_depth, max_depth, device = "cpu"):
         device (string): flag to enable gpus
 
     Returns:
-        array.array: coordinates o fthe grid points
+        array.float: coordinates of the grid points
         array.int: array containing index for the grid
         int: number of points along x axis
     """
@@ -70,7 +70,6 @@ def resp_probe(path, nt, pad, step):
         list: indexes of min and max the significant frequences
     """
 
-    
     proberesponse = np.loadtxt(path)
     size = proberesponse.shape[0]
     dt = proberesponse[1, 0] - proberesponse[0, 0]
@@ -93,7 +92,7 @@ def resp_probe(path, nt, pad, step):
     iminsx = np.argmin(np.flipud(rdB[:imax]))
     imindx = np.argmin(rdB[imax:])
 
-    rfreq = rfreq[imax - iminsx : imindx + imax]
+    rfreq = rfreq[imax - iminsx: imindx + imax]
 
     return rfreq, [imax - iminsx, imindx + imax]
 
@@ -119,20 +118,19 @@ def element_discr(pitch, kerf, elevation, Nx, Ny):
     dx = width / Nx
     dy = elevation / Ny
 
-    
-    x = np.arange(-width / 2, width / 2, dx)
+    x = np.arange(-width/2, width/2, dx)
     y = np.arange(-elevation / 2, elevation / 2, dy)
     xc = x + dx / 2
     yc = y + dy / 2
     gridx, gridy = np.meshgrid(xc, yc)
     return np.array(
-            [
-                np.reshape(gridx, (1, Nx * Ny)),
-                np.reshape(gridy, (1, Nx * Ny)),
-                np.zeros((1, Nx * Ny)),
-            ],
-            dtype=np.single,
-        )[:, 0, :].T
+        [
+            np.reshape(gridx, (1, Nx * Ny)),
+            np.reshape(gridy, (1, Nx * Ny)),
+            np.zeros((1, Nx * Ny)),
+        ],
+        dtype=np.single,
+    )[:, 0, :].T
 
 
 # %%
@@ -152,7 +150,7 @@ def rit_g(geomf, y_cen, c):
 
 
 # %%
-def sinusoidalPulse(f0, N, dt, ntimes, pad, nfreq=None, device = "cpu"):
+def sinusoidalPulse(f0, N, dt, ntimes, pad, nfreq=None, device="cpu"):
     """Function for generate a sinusoidal pulse fixing the frequency of transmission and the number of cycles
 
     Args:
@@ -171,23 +169,23 @@ def sinusoidalPulse(f0, N, dt, ntimes, pad, nfreq=None, device = "cpu"):
     if device == "cpu":
         scipy.fft.set_global_backend("scipy")
         nsample = 2 * round(1 / dt / (2 * f0))
-        taps = np.linspace(0, nsample * N)
+        taps = np.arange(0, nsample * N)
         I = np.sin(2 * np.pi * taps / nsample)
         I = np.pad(I, (pad, ntimes - I.shape[0]), "constant")
         if nfreq is None:
             I = scipy.fft.fft(I)
         else:
-            I = scipy.fft.fft(I)[nfreq[0] : nfreq[1]]
-    
+            I = scipy.fft.fft(I)[nfreq[0]: nfreq[1]]
+
     elif device == "gpu":
         scipy.fft.set_global_backend(cufft)
         nsample = 2 * round(1 / dt / (2 * f0))
-        taps = cp.linspace(0, nsample * N)
-        I = cp.sin(2 * np.pi * taps / nsample)
+        taps = cp.arange(0, nsample * N)
+        I = cp.sin(2 * cp.pi * taps / nsample)
         I = cp.pad(I, (pad, ntimes - I.shape[0]), "constant")
         if nfreq is None:
             I = scipy.fft.fft(I)
         else:
-            I = scipy.fft.fft(I)[nfreq[0] : nfreq[1]]
+            I = scipy.fft.fft(I)[nfreq[0]: nfreq[1]]
 
     return I[: int((ntimes + pad) / 2)]

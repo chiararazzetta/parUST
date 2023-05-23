@@ -4,9 +4,7 @@ from numpy.ctypeslib import load_library
 from numpy.ctypeslib import ndpointer
 import math
 import numpy as np
-import scipy
-from multiprocessing import cpu_count
-from joblib import Parallel, delayed
+import scipy 
 
 import matplotlib.pyplot as plt
 
@@ -37,14 +35,14 @@ def mrisptopy(cen, p, v, dt, g, ntimes):
     """Function to link python objects to c function
 
     Args:
-        cen (numpy.float): array containing the coordinates of element discretization points
-        p (numpy.float): array containing the coordinates of the points of the field
+        cen (array.float): array containing the coordinates of element discretization points
+        p (array.float): array containing the coordinates of the points of the field
         v (float):medium speed
         dt (float): time step
-        g (numpy.float): array containing the geometric delays to simulate the probe lens
+        g (array.float): array containing the geometric delays to simulate the probe lens
 
     Returns:
-        list : two numpy arrays, the array of impulse response values and the corresponding time
+        list : two array arrays, the array of impulse response values and the corresponding time
     """
     row = cen.shape[0]
     npunti = p.shape[0]
@@ -66,24 +64,25 @@ def wideMap(c, dt, geom, grid, cen, nt, pad, A, hprobe=None):
     Args:
         c (float): medium speed
         dt (float): time step
-        geom (numpy.float): array containing the geometric delays to simulate the probe lens
-        grid (numpy.float): array containing the coordinates of the points of the field
-        cen (numpy.float): array containing the coordinates of element discretization points
+        geom (array.float): array containing the geometric delays to simulate the probe lens
+        grid (array.float): array containing the coordinates of the points of the field
+        cen (array.float): array containing the coordinates of element discretization points
         nt (int): maximum number of temporal instant
         pad (int): number of zero for signals padding
-        A (numpy.float): array containing the attenuation coefficients
+        A (array.float): array containing the attenuation coefficients
 
     Optional Args:
         hprobe (list): if it is possible to have a measurements of the probe impulse response, we cut the significant frequencies
                        and take in account its shape
 
     Returns:
-        numpy.complex: array containing the collection of the impulse responses
+        array.complex: array containing the collection of the impulse responses
     """
 
     h, t = mrisptopy(cen, grid, c, dt, geom, nt)
     h = np.pad(h, ((0, 0), (int(pad/2), int(pad/2))))
-
+    scipy.fft.set_global_backend("scipy")
+    
     h = scipy.fft.fft(h, axis=1)
     h = h[:, : (nt + pad) // 2]
 
@@ -111,13 +110,13 @@ def Narrow_att_map(coordz, f0, factor, N):
     """Function for computing the attenuation map in single frequency Narrow Band case
 
     Args:
-        coordz (numpy.float): array containing all the possible depths in the field
+        coordz (array.float): array containing all the possible depths in the field
         f0 (float): central frequency
         factor (float): factor for attenuation rule (0.5 for narrow transmission 0.3 for wide transmission)
         N (int): number of point along the xaxis
 
     Returns:
-        numpy.complex: array containing the attenuation map with grid size
+        array.complex: array containing the attenuation map with grid size
     """
 
     attmap = 10 ** ((-factor / 20) * (f0 * coordz) / (10**4))
@@ -132,7 +131,7 @@ def Wide_att_map(coordz, Nx, Nz, factor, nt, pad, dt):
     """Function for computing the attenuation map in Wide Band case
 
     Args:
-        coordz (numpy.float): array containing all the possible depths in the field
+        coordz (array.float): array containing all the possible depths in the field
         Nx (int): number of point along the xaxis
         Nz (int): number of point along the zaxis
         factor (float): factor for attenuation rule
@@ -141,7 +140,7 @@ def Wide_att_map(coordz, Nx, Nz, factor, nt, pad, dt):
         dt (float): time step
 
     Returns:
-        numpy.complex: array containing the attenuation map with grid size
+        array.complex: array containing the attenuation map with grid size
     """
     w = np.linspace(0, 1 / dt, pad + nt + 1)
     wreal = w[0 : (nt + pad) // 2]
@@ -170,15 +169,15 @@ def NarrowMaps(pitch, c, dt, f_g, step, Nz, min_d, max_d, factor, cen, f0, Nel, 
         min_d (float): minimum depth
         max_d (float): maximum depth
         factor (float): attenuation factor
-        cen (numpy.float): array containing the coordinates of element discretization points
+        cen (array.float): array containing the coordinates of element discretization points
         f0 (float): central frequency of the narrow pulse
         Nel (int): number of probe elements
         NelImm (int): number of image elements
 
     Returns:
-        numpy.complex: the maps array
-        numpy.complex: the attenuation array
-        numpy.float: the grid coordinates
+        array.complex: the maps array
+        array.complex: the attenuation array
+        array.float: the grid coordinates
         int: the grid dimesions along x axis
         int: the grid dimesions along z axis
     """
@@ -225,7 +224,7 @@ def WideMaps(
 
     Args:
         pitch (float): element length for translations on the probe
-        cen (numpy.float): array containing the coordinates of element discretization points
+        cen (array.float): array containing the coordinates of element discretization points
         f_g (float): geometrical focus of the probe
         nel (int): number of elements of the probe to be considered
         c (float): medium speed
@@ -240,11 +239,11 @@ def WideMaps(
         path (string, optional):path to the .txt file containing the measurement of the probe impulse response. Defaults to None.
 
     Returns:
-        numpy.complex: the attenuated map array
+        array.complex: the attenuated map array
         int: the grid dimesions along x axis
         int: the grid dimesions along z axis
-        numpy.float: the grid coordinates
-        numpy.int: the grid indexes
+        array.float: the grid coordinates
+        array.int: the grid indexes
         list: indexes of min and max the significant frequences
 
     """

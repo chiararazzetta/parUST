@@ -1,7 +1,6 @@
 # %%
 import numpy as np
 import cupy as cp
-import matplotlib.pyplot as plt
 
 
 # %%
@@ -66,8 +65,6 @@ def del_to_freq(delays, dt, ntimes, pad, nfreq=None, device = "cpu"):
     
         return cp.exp(-2 * cp.pi * 1j * w * delays[:, cp.newaxis])
 
-
-
 # %%
 def NarrowBP(delay, map, attenuation, f0, elements, device = "cpu"):
     """Function for Narrow Beam Pattern computation
@@ -78,7 +75,7 @@ def NarrowBP(delay, map, attenuation, f0, elements, device = "cpu"):
         attenuation (array.complex): attenuation map
         f0 (float): trasmission frequency
         elements (int): number of active elements (half aperture)
-        device (string): flag to enable gpus
+        device (string, optional): flag to enable gpus
 
     Returns:
         array.float: beam pattern power values
@@ -101,101 +98,77 @@ def NarrowBP(delay, map, attenuation, f0, elements, device = "cpu"):
         B = cp.sum(delayed, axis=0)
         return (cp.abs(B * attenuation)) ** 2
 
-
 # %%
-def wideMapCut(NelImm, step, H, Nz, grid, device = "cpu"):
-    """Function to generate the multiple maps for Bp
-
-    Args:
-        NelImm (int): half-number of element to be visualized
-        step (float): fractional part of the pitch for spacing the x coordinates
-        H (array.complex): global wide map
-        Nz (int): number of grid points along z axis
-        grid (array.float): coordinates of the grid
-        device (string): flag to enable gpus
-
-    Returns:
-        array.complex: set of maps for the desired elements
-        int: the grid dimesions along x axis
-        int: the grid dimesions along z axis
-        array.float: coordinates of the image grid
-    """
-    n = int(1 / step)
-    t = n * Nz
-
-    if device == "cpu":
-        centre = np.where(grid[:, 0] == 0)[0][0]
-        N = int(NelImm / 2)
-
-        Mapsize = [t * NelImm, H.shape[1]]
-        Maps = np.empty((NelImm, Mapsize[0], Mapsize[1]), dtype=complex)
-    elif device == "gpu":
-        centre = cp.where(grid[:, 0] == 0)[0][0]
-        N = int(NelImm / 2)
-
-        Mapsize = [t * NelImm, H.shape[1]]
-        Maps = cp.empty((NelImm, Mapsize[0], Mapsize[1]), dtype=complex)
-
-
-    for i in range(-N, N):
-        sx = centre - t * (N + i)
-        dx = centre + t * (N - i)
-
-        Maps[N + i, :, :] = H[sx:dx, :]
-
-    return Maps, n * NelImm, Nz, grid[centre - t * N : centre + t * N + Nz, :]
-
-
-# %%
-def WideBP(delay, map, elements, dt, ntimes, pad, Nx, Nz, I, nfreq=None, device = "cpu"):
-    """Function for generating Wide Band Beam Patterns
+def WideBP(delay, H, elements, step, NelImm, grid, dt, ntimes, pad, Nz, I, nfreq = None, device = "cpu"):
+    """Function for Wide Beam Pattern computation
 
     Args:
         delay (array.float): array containing the values of the delays
-        map (array.complex): array of impulse response maps
+        H (array.complex): array of impulse response maps
         elements (int): number of active elements (half aperture)
+        step (float): fractional part of the pitch for spacing the x coordinates
+        NelImm (int): number of elements for depicting the BP
+        grid (array.float): coordinates of the grid points
         dt (float): time step
         ntimes (int): maximum number of temporal instant
         pad (int): number of zerod for signals padding
-        Nz (int): number of point along the zaxis
-        Nx (int): number of point along the xaxis
-        I (array.complex): temporal frequency domain pulse
-        list (optional): indexes of min and max the significant frequences. Defaults to None.
-        device (string): flag to enable gpus
+        Nz (int): number of point along z-axis
+        I (array.float): spectrum of the emitted waveform (real frequencies)
+        nfreq (list, optional): indexes of min and max the significant frequences. Defaults to None.
+        device (string, optional): flag to enable gpus.
 
     Returns:
         array.float: beam pattern power values
-    """
+        int: dimensions of the grid along x-axis
+        int: dimension of the grid alog z-axis
+        array.float:new grid coordinates
+    """    
+    n = int(1 / step)
+    t = n * Nz
+    N = int(NelImm / 2)
+    centre = np.where(grid[:, 0] == 0)[0][0] - Nz
 
     if device == "cpu":
+        Map = np.zeros((t * NelImm, H.shape[1]), dtype=complex)
+
         e = np.concatenate((np.flipud(delay), delay))
         del_freq = del_to_freq(e, dt, ntimes, pad, nfreq, device)
 
-        center = int(map.shape[0] / 2)
-        delayed = np.sum(
-            map[center - elements : center + elements, :, :] * del_freq[:, np.newaxis, :],
-            axis=0,
-        )
+        for i in range(-elements, elements):
+            sx = centre - t * (N + i)
+            dx = centre + t * (N - i)
 
-        pulsed = delayed * I[np.newaxis, :]
+            if nfreq is None:
+                Map = Map + (H[sx:dx, :] * del_freq[elements+i,:])
+            else:
+                Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]] * del_freq[elements+i,:])
 
+        pulsed = Map * I[np.newaxis, :]
         power = np.sum(np.abs(pulsed) ** 2, axis=1)
-        return np.reshape(power, (Nx, Nz))
+
+        return np.reshape(power, (n * NelImm, Nz)), n * NelImm, Nz, grid[centre - t * N : centre + t * N + Nz, :]
+    
     elif device == "gpu":
-        map = cp.asarray(map)
+            
+        Map = cp.zeros((t * NelImm, H.shape[1]), dtype=complex)
+
+        H = cp.asarray(H)
         e = cp.concatenate((cp.flipud(delay), delay))
         del_freq = del_to_freq(e, dt, ntimes, pad, nfreq, device)
 
-        center = int(map.shape[0] / 2)
-        delayed = cp.sum(
-            map[center - elements : center + elements, :, :] * del_freq[:, cp.newaxis, :],
-            axis=0,
-        )
+        for i in range(-elements, elements):
+            sx = centre - t * (N + i)
+            dx = centre + t * (N - i)
 
-        pulsed = delayed * I[cp.newaxis, :]
+            if nfreq is None:
+                Map = Map + (H[sx:dx, :] * del_freq[elements+i,:])
+            else:
+                Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]] * del_freq[elements+i,:])
 
+        pulsed = Map * I[cp.newaxis, :]
         power = cp.sum(cp.abs(pulsed) ** 2, axis=1)
-        return cp.reshape(power, (Nx, Nz))
+
+        return cp.reshape(power, (n * NelImm, Nz)), n * NelImm, Nz, grid[centre - t * N : centre + t * N + Nz, :]
 
 
 # %%
@@ -223,5 +196,3 @@ def todB(BP, cut=-40, device = "cpu"):
     Cnorm[Cnorm < cut] = cut
     return Cnorm
 
-
-# %%

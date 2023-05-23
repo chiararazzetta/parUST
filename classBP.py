@@ -13,7 +13,7 @@ from f_initialization import (
     resp_probe,
 )
 from MapGeneration import WideMaps, NarrowMaps
-from BpCompute import std_del, NarrowBP, wideMapCut, WideBP, todB
+from BpCompute import std_del, NarrowBP, WideBP, todB
 
 
 class BeamPattern:
@@ -41,8 +41,8 @@ class BeamPattern:
         n_ydiscr=150,
         f0=4.5e6,
         Ncycles=3,
-        focus=0.025,
-        active_el=15,
+        focus=[0.025],
+        active_el=[4],
         wideEl=70,
         probe_respTXT=None,
         device = "cpu"
@@ -98,33 +98,42 @@ class BeamPattern:
         self.beam = {
             "H": None,
             "A": None,
-            "focus": focus,
-            "active_el": active_el,
+            "focus": list(focus),
+            "active_el": list(active_el),
+            "Nsets" : len(focus) * len(active_el),
             "wideH": None,
-            "wideEl": wideEl,
-            "wideNx": self.field["Nx"],
-            "wideNz": self.field["Nz"],
-            "wideGrid": self.field["grid_coord"],
+            "NelImm": wideEl,
+            "NX": list(),
+            "NZ": list(),
+            "BPgrid": list(),
             "dbCut": -40,
+            "delays" : list(),
+            "BPlinear" : list(),
+            "BPdecibel": list()
         }
-        self.beam["delays"] = std_del(
-            self.beam["focus"],
+        self.beam["delays"].append(std_del(
+            self.beam["focus"][0],
             self.probe["pitch"],
             self.field["c"],
-            self.beam["active_el"],
-        )
+            self.beam["active_el"][0],
+        ))
         
     def DelaysSet(self, free_del=None):
         if free_del is None:
-            self.beam["delays"] = std_del(
-                self.beam["focus"],
-                self.probe["pitch"],
-                self.field["c"],
-                self.beam["active_el"],
-                self.device
-            )
+            self.beam["Nsets"] = len(self.beam["focus"]) * len(self.beam["active_el"])
+            self.beam["delays"] = []
+            for i in range(len(self.beam["active_el"])):
+                for j in range(len(self.beam["focus"])):
+                    self.beam["delays"].append(std_del(
+                        self.beam["focus"][j],
+                        self.probe["pitch"],
+                        self.field["c"],
+                        self.beam["active_el"][i],
+                        self.device
+                ))
         else:
             self.beam["delays"] = free_del
+            self.beam["Nsets"] = len(free_del)
             self.beam["focus"] = None
 
     def SaveMaps(self, path):
@@ -166,6 +175,8 @@ class BeamPattern:
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
+            self.beam["NX"] = xnum
+            self.beam["NZ"] = znum
             self.beam["wideGrid"] = g
         elif self.BPtype == "Wide":
             fWide = open(path, "rb")
@@ -193,7 +204,7 @@ class BeamPattern:
             self.probe["cen"],
             self.pulse["f0"],
             self.probe["N_el"],
-            self.beam["wideEl"]
+            self.beam["NelImm"]
             )
 
             self.beam["H"] = H
@@ -201,9 +212,7 @@ class BeamPattern:
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
-            self.beam["wideNx"] = xnum
-            self.beam["wideNz"] = znum
-            self.beam["wideGrid"] = g
+
         elif self.BPtype == "Wide":
             H, xnum, znum, g, idx = WideMaps(
                 self.probe["pitch"],
@@ -228,56 +237,59 @@ class BeamPattern:
             self.field["Nz"] = znum
             self.probe["idx_freq"] = idx
 
+       
     def BPcompute(self):
         if self.BPtype == "Narrow":
-            self.beam["BPlinear"] = NarrowBP(
-                self.beam["delays"],
-                self.beam["H"],
-                self.beam["A"],
-                self.pulse["f0"],
-                self.beam["active_el"],
-                self.device
-            )
-            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"], self.device)
+            for i in range(self.beam["Nsets"]):
+                B = NarrowBP(
+                    self.beam["delays"][i],
+                    self.beam["H"],
+                    self.beam["A"],
+                    self.pulse["f0"],
+                    self.beam["delays"][i].shape[0],
+                    self.device
+                )
+                self.beam["BPlinear"].append(B)
+                self.beam["BPgrid"].append(self.field["grid_coord"])
+                self.beam["NX"].append(self.field["Nx"])
+                self.beam["NZ"].append(self.field["Nz"])
+                self.beam["BPdecibel"].append(todB(B, self.beam["dbCut"], self.device))
         elif self.BPtype == "Wide":
-            maps, xnum, znum, g = wideMapCut(
-                self.beam["wideEl"],
-                self.field["step"],
+            for i in range(self.beam["Nsets"]):
+                B, xnum, znum, g = WideBP(
+                self.beam["delays"][i],
                 self.beam["H"],
-                self.field["Nz"],
+                self.beam["delays"][i].shape[0],
+                self.field["step"],
+                self.beam["NelImm"],
                 self.field["grid_coord"],
-            )
-            self.beam["wideH"] = maps
-            self.beam["wideNx"] = xnum
-            self.beam["wideNz"] = znum
-            self.beam["wideGrid"] = g
-
-            self.beam["BPlinear"] = WideBP(
-                self.beam["delays"],
-                self.beam["wideH"],
-                self.beam["active_el"],
                 self.field["dt"],
                 self.field["ntimes"],
                 self.field["pad"],
-                self.beam["wideNx"],
-                self.beam["wideNz"],
+                self.field["Nz"],
                 self.pulse["Pulse"],
                 self.probe["idx_freq"],
                 self.device
-            )
-            self.beam["BPdecibel"] = todB(self.beam["BPlinear"], self.beam["dbCut"], self.device)
 
-    def BPplot(self):
+            )
+                self.beam["BPlinear"].append(B)
+                self.beam["BPgrid"].append(g)
+                self.beam["NX"].append(xnum)
+                self.beam["NZ"].append(znum)
+                self.beam["BPdecibel"].append(todB(B, self.beam["dbCut"], self.device))
+            
+
+    def BPplot(self, Nfig=0):
         if self.device == "cpu":
-            BP = self.beam["BPdecibel"]
-            N = self.beam["wideNz"]
-            G = self.beam["wideGrid"]
-            X = self.beam["wideNx"]
+            BP = self.beam["BPdecibel"][Nfig]
+            N = self.beam["NZ"][Nfig]
+            G = self.beam["BPgrid"][Nfig]
+            X = self.beam["NX"][Nfig]
         elif self.device == "gpu":
-            BP = cp.asnumpy(self.beam["BPdecibel"])
-            N = cp.asnumpy(self.beam["wideNz"])
-            G = cp.asnumpy(self.beam["wideGrid"])
-            X = cp.asnumpy(self.beam["wideNx"])
+            BP = cp.asnumpy(self.beam["BPdecibel"][Nfig])
+            N = cp.asnumpy(self.beam["NZ"][Nfig])
+            G = cp.asnumpy(self.beam["BPgrid"][Nfig])
+            X = cp.asnumpy(self.beam["NX"][Nfig])
             
 
         plt.rcParams["axes.autolimit_mode"] = "round_numbers"

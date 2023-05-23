@@ -13,6 +13,10 @@
 		}
 	},
 
+	"runArgs": [
+		"--gpus",
+		"all"
+	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
@@ -20,7 +24,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "python3 -m pip install --upgrade pip ; pip install -r requirements.txt"
+	"postCreateCommand": "sudo apt update; sudo apt install nvidia-cuda-toolkit; python3 -m pip install --upgrade pip ; pip install -r requirements.txt"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
