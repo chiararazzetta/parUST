@@ -6,8 +6,6 @@ import math
 import numpy as np
 import scipy 
 
-import matplotlib.pyplot as plt
-
 from f_initialization import rit_g, grid_create, grid_create, resp_probe
 
 # %%

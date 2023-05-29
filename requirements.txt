@@ -1,7 +1,5 @@
 numpy
 scipy
-joblib
 matplotlib
-multiprocess
 cupy-cuda11x
 python-time

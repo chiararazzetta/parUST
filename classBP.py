@@ -43,7 +43,7 @@ class BeamPattern:
         Ncycles=3,
         focus=[0.025],
         active_el=[4],
-        wideEl=70,
+        NelImm=70,
         probe_respTXT=None,
         device = "cpu"
     ):
@@ -102,7 +102,7 @@ class BeamPattern:
             "active_el": list(active_el),
             "Nsets" : len(focus) * len(active_el),
             "wideH": None,
-            "NelImm": wideEl,
+            "NelImm": NelImm,
             "NX": list(),
             "NZ": list(),
             "BPgrid": list(),
@@ -175,7 +175,6 @@ class BeamPattern:
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
-            
         elif self.BPtype == "Wide":
             fWide = open(path, "rb")
             H, g, xnum, znum, idx = pickle.load(fWide)
