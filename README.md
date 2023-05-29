@@ -1,4 +1,4 @@
-# USTransmission
+# parUST
 This repository cointains a Python simulator for medical ultrasound linear probe beam pattern computation.
 In detail, the code consists into two different approaches of beam pattern computation as is different for wide-band and narrow-band transmission settings.
 Furthermore, it makes use of some approximations and exploits geometrical simmetries as described in [1].
@@ -6,7 +6,7 @@ The simulation consists in computing or loading an approximation of the impulse 
 The computation is performed on CPU cores. For the Beam Pattern computation it is implemented a GPU version.
 
 
-[1] Cit archivio paper teorico nostro ?
+[1] C. Razzetta, V. Candiani, M. Crocco and F. Benvenuto. A hybrid time-frequency parametric modelling of medical ultrasound signal transmission. Submitted.
 
 [2] J. A. Jensen. A new calculation procedure for spatial impulse responses in ultrasound. The Journal of the Acoustical Society of America, 105(6):3266–3274, 06 1999
 
@@ -24,3 +24,4 @@ We have compiled the file with g++ (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0 compile
 
 # Copyright:
 The USTransmission software is free but copyrighted software, distributed under the terms of the CC BY-NC 4.0 as published by Creative Common Foundation. See the files LICENSE for more details.
+If you use the simulation please consider citing [1].
