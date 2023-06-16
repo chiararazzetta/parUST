@@ -10,10 +10,10 @@ NB = BeamPattern()
 NB.MapsCompute()
 
 # Option to save the maps 
-# WB.SaveMaps('testData/testNarrow.pkl')
+# NB.SaveMaps('testData/testNarrow.pkl')
 
 # If maps are precomputed you can reload them
-#NB.LoadMaps('testData/testNarrow.pkl')
+# NB.LoadMaps('testData/Narrow45.pkl')
 
 # %%
 # If maps are loaded you want to change delays profile by defining a different focus or number

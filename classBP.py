@@ -46,8 +46,8 @@ class BeamPattern:
         NelImm=70,
         probe_respTXT=None,
         apo=0,
-        sigma=1.5,
-        APOtype="gauss",
+        sigma=[1.5],
+        APOtype=["gauss"],
         device="cpu"
     ):
         self.BPtype = BPtype
@@ -107,8 +107,8 @@ class BeamPattern:
             "wideH": None,
             "NelImm": NelImm,
             "apo": apo,
-            "sigma": list(sigma),
-            "APOtype": list(APOtype),
+            "sigma": sigma,
+            "APOtype": APOtype,
             "NX": list(),
             "NZ": list(),
             "BPgrid": list(),
@@ -247,51 +247,99 @@ class BeamPattern:
 
     def BPcompute(self):
         if self.BPtype == "Narrow":
-            for i in range(self.beam["Nsets"]):
-                B = NarrowBP(
-                    self.beam["delays"][i],
-                    self.beam["H"],
-                    self.beam["A"],
-                    self.pulse["f0"],
-                    self.beam["delays"][i].shape[0],
-                    self.beam["apo"],
-                    self.beam["sigma"][i],
-                    self.beam["APOtype"][i],
-                    self.device
-                )
-                self.beam["BPlinear"].append(B)
-                self.beam["BPgrid"].append(self.field["grid_coord"])
-                self.beam["NX"].append(self.field["Nx"])
-                self.beam["NZ"].append(self.field["Nz"])
-                self.beam["BPdecibel"].append(
-                    todB(B, self.beam["dbCut"], self.device))
+            if self.beam["apo"] == 0:
+                for i in range(self.beam["Nsets"]):
+                    B = NarrowBP(
+                        self.beam["delays"][i],
+                        self.beam["H"],
+                        self.beam["A"],
+                        self.pulse["f0"],
+                        self.beam["delays"][i].shape[0],
+                        self.beam["apo"],
+                        self.beam["sigma"][0],
+                        self.beam["APOtype"][0],
+                        self.device
+                    )
+                    self.beam["BPlinear"].append(B)
+                    self.beam["BPgrid"].append(self.field["grid_coord"])
+                    self.beam["NX"].append(self.field["Nx"])
+                    self.beam["NZ"].append(self.field["Nz"])
+                    self.beam["BPdecibel"].append(
+                        todB(B, self.beam["dbCut"], self.device))
+            elif self.beam["apo"] == 1:
+                for i in range(self.beam["Nsets"]):
+                    B = NarrowBP(
+                        self.beam["delays"][i],
+                        self.beam["H"],
+                        self.beam["A"],
+                        self.pulse["f0"],
+                        self.beam["delays"][i].shape[0],
+                        self.beam["apo"],
+                        self.beam["sigma"][i],
+                        self.beam["APOtype"][i],
+                        self.device
+                    )
+                    self.beam["BPlinear"].append(B)
+                    self.beam["BPgrid"].append(self.field["grid_coord"])
+                    self.beam["NX"].append(self.field["Nx"])
+                    self.beam["NZ"].append(self.field["Nz"])
+                    self.beam["BPdecibel"].append(
+                        todB(B, self.beam["dbCut"], self.device))
         elif self.BPtype == "Wide":
-            for i in range(self.beam["Nsets"]):
-                B, xnum, znum, g = WideBP(
-                    self.beam["delays"][i],
-                    self.beam["H"],
-                    self.beam["delays"][i].shape[0],
-                    self.field["step"],
-                    self.beam["NelImm"],
-                    self.field["grid_coord"],
-                    self.field["dt"],
-                    self.field["ntimes"],
-                    self.field["pad"],
-                    self.field["Nz"],
-                    self.pulse["Pulse"],
-                    self.probe["idx_freq"],
-                    self.beam["apo"],
-                    self.beam["sigma"][i],
-                    self.beam["APOtype"][i],
-                    self.device
+            if self.beam["apo"] == 0:
+                for i in range(self.beam["Nsets"]):
+                    B, xnum, znum, g = WideBP(
+                        self.beam["delays"][i],
+                        self.beam["H"],
+                        self.beam["delays"][i].shape[0],
+                        self.field["step"],
+                        self.beam["NelImm"],
+                        self.field["grid_coord"],
+                        self.field["dt"],
+                        self.field["ntimes"],
+                        self.field["pad"],
+                        self.field["Nz"],
+                        self.pulse["Pulse"],
+                        self.probe["idx_freq"],
+                        self.beam["apo"],
+                        self.beam["sigma"][0],
+                        self.beam["APOtype"][0],
+                        self.device
 
-                )
-                self.beam["BPlinear"].append(B)
-                self.beam["BPgrid"].append(g)
-                self.beam["NX"].append(xnum)
-                self.beam["NZ"].append(znum)
-                self.beam["BPdecibel"].append(
-                    todB(B, self.beam["dbCut"], self.device))
+                    )
+                    self.beam["BPlinear"].append(B)
+                    self.beam["BPgrid"].append(g)
+                    self.beam["NX"].append(xnum)
+                    self.beam["NZ"].append(znum)
+                    self.beam["BPdecibel"].append(
+                        todB(B, self.beam["dbCut"], self.device))
+            elif self.beam["apo"] == 1:
+                for i in range(self.beam["Nsets"]):
+                    B, xnum, znum, g = WideBP(
+                        self.beam["delays"][i],
+                        self.beam["H"],
+                        self.beam["delays"][i].shape[0],
+                        self.field["step"],
+                        self.beam["NelImm"],
+                        self.field["grid_coord"],
+                        self.field["dt"],
+                        self.field["ntimes"],
+                        self.field["pad"],
+                        self.field["Nz"],
+                        self.pulse["Pulse"],
+                        self.probe["idx_freq"],
+                        self.beam["apo"],
+                        self.beam["sigma"][0],
+                        self.beam["APOtype"][0],
+                        self.device
+
+                    )
+                    self.beam["BPlinear"].append(B)
+                    self.beam["BPgrid"].append(g)
+                    self.beam["NX"].append(xnum)
+                    self.beam["NZ"].append(znum)
+                    self.beam["BPdecibel"].append(
+                        todB(B, self.beam["dbCut"], self.device))
 
     def BPplot(self, Nfig=0):
         if self.device == "cpu":
