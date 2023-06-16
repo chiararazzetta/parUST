@@ -4,7 +4,7 @@ import cupy as cp
 
 
 # %%
-def std_del(z_f, pitch, c, el, device = "cpu"):
+def std_del(z_f, pitch, c, el, device="cpu"):
     """Function for standard delay calculation
 
     Args:
@@ -23,7 +23,7 @@ def std_del(z_f, pitch, c, el, device = "cpu"):
         return (z_f - cp.sqrt(((0.5 + cp.arange(0, el)) * pitch) ** 2 + z_f**2)) / c
 
 
-def del_to_freq(delays, dt, ntimes, pad, nfreq=None, device = "cpu"):
+def del_to_freq(delays, dt, ntimes, pad, nfreq=None, device="cpu"):
     """Function to pass the delays in time frequency domain
 
     Args:
@@ -40,33 +40,55 @@ def del_to_freq(delays, dt, ntimes, pad, nfreq=None, device = "cpu"):
 
     if device == "cpu":
         if nfreq is None:
-            w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1), (delays.shape[0], 1))
+            w = np.tile(np.linspace(0, 1 / dt, pad + ntimes + 1),
+                        (delays.shape[0], 1))
         else:
             w = np.tile(
-                np.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0] : nfreq[1]],
+                np.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0]: nfreq[1]],
                 (delays.shape[0], 1),
             )[:, : (ntimes + pad) // 2]
 
         w = w[:, : int((ntimes + pad) / 2)]
 
-    
         return np.exp(-2 * np.pi * 1j * w * delays[:, np.newaxis])
     elif device == "gpu":
         if nfreq is None:
-            w = cp.tile(cp.linspace(0, 1 / dt, pad + ntimes + 1), (delays.shape[0], 1))
+            w = cp.tile(cp.linspace(0, 1 / dt, pad + ntimes + 1),
+                        (delays.shape[0], 1))
         else:
             w = cp.tile(
-                cp.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0] : nfreq[1]],
+                cp.linspace(0, 1 / dt, pad + ntimes + 1)[nfreq[0]: nfreq[1]],
                 (delays.shape[0], 1),
             )[:, : (ntimes + pad) // 2]
 
         w = w[:, : int((ntimes + pad) / 2)]
 
-    
         return cp.exp(-2 * cp.pi * 1j * w * delays[:, cp.newaxis])
 
+
 # %%
-def NarrowBP(delay, map, attenuation, f0, elements, device = "cpu"):
+def apodization(elements, sigma, type="gauss"):
+    """Function for initializing apodization
+
+    Args:
+        elements (int): number of active elements (half)
+        sigma (float): parameter
+        type (str, optional): Type of window: gauss, hamming, hanning. Defaults to "gauss".
+
+    Returns:
+        array.float: apodization weights
+    """
+    if type == "gauss":
+        return np.exp(-0.5*((np.arange(0, elements)+0.5)/(sigma*elements/2)) ** 2)
+    elif type == "hanning":
+        return 0.5*(1-np.cos((2*np.pi*(np.arange(0, 2*elements)+0.5))/elements))[:elements]
+    elif type == "hamming":
+        return sigma - (1 - sigma) * np.cos((2*np.pi*(np.arange(0, 2*elements)+0.5)/elements))[:elements]
+
+# %%
+
+
+def NarrowBP(delay, map, attenuation, f0, elements, apo=0, sigma=1.5, type="gauss", device="cpu"):
     """Function for Narrow Beam Pattern computation
 
     Args:
@@ -75,31 +97,51 @@ def NarrowBP(delay, map, attenuation, f0, elements, device = "cpu"):
         attenuation (array.complex): attenuation map
         f0 (float): trasmission frequency
         elements (int): number of active elements (half aperture)
-        device (string, optional): flag to enable gpus
+        apo (int, optional): flag to enable apodization: 0 no, 1 yes. Defaults to 0
+        sigma (float, optional): parameter of apodization windows. Defaults to 1.5
+        type (string, optional): type of apodization window, Defaults to "gauss"
+        device (string, optional): flag to enable gpus. Defaults to "cpu"
 
     Returns:
         array.float: beam pattern power values
     """
     if device == "cpu":
-        delayed = (
-            map[:elements, :, :]
-            * np.exp(-2 * np.pi * 1j * f0 * delay)[:elements, np.newaxis, np.newaxis]
-        )
+        if apo == 0:
+            delayed = (
+                map[:elements, :, :]
+                * np.exp(-2 * np.pi * 1j * f0 * delay)[:elements, np.newaxis, np.newaxis]
+            )
+        elif apo == 1:
+            weights = apodization(elements, sigma, type)
+            delayed = (
+                map[:elements, :, :]
+                * np.exp(-2 * np.pi * 1j * f0 * delay)[:elements, np.newaxis, np.newaxis] * weights[:, np.newaxis, np.newaxis]
+            )
         B = np.sum(delayed, axis=0)
         return (np.abs(B * attenuation)) ** 2
     elif device == "gpu":
         map = cp.asarray(map)
         attenuation = cp.asarray(attenuation)
-        
-        delayed = (
-            map[:elements, :, :]
-            * cp.exp(-2 * cp.pi * 1j * f0 * delay)[:elements, cp.newaxis, cp.newaxis]
-        )
+
+        if apo == 0:
+            delayed = (
+                map[:elements, :, :]
+                * cp.exp(-2 * cp.pi * 1j * f0 * delay)[:elements, cp.newaxis, cp.newaxis]
+            )
+        elif apo == 1:
+            weights = cp.asarray(apodization(elements, sigma, type))
+            delayed = (
+                map[:elements, :, :]
+                * np.exp(-2 * np.pi * 1j * f0 * delay)[:elements, np.newaxis, np.newaxis] * weights[:, np.newaxis, np.newaxis]
+            )
+
         B = cp.sum(delayed, axis=0)
         return (cp.abs(B * attenuation)) ** 2
 
 # %%
-def WideBP(delay, H, elements, step, NelImm, grid, dt, ntimes, pad, Nz, I, nfreq = None, device = "cpu"):
+
+
+def WideBP(delay, H, elements, step, NelImm, grid, dt, ntimes, pad, Nz, I, nfreq=None, apo=0, sigma=1.5, type="gauss", device="cpu"):
     """Function for Wide Beam Pattern computation
 
     Args:
@@ -115,6 +157,9 @@ def WideBP(delay, H, elements, step, NelImm, grid, dt, ntimes, pad, Nz, I, nfreq
         Nz (int): number of point along z-axis
         I (array.float): spectrum of the emitted waveform (real frequencies)
         nfreq (list, optional): indexes of min and max the significant frequences. Defaults to None.
+        apo (int, optional): flag to enable apodization: 0 no, 1 yes. Defaults to 0
+        sigma (float, optional): parameter of apodization windows. Defaults to 1.5
+        type (string, optional): type of apodization window, Defaults to "gauss"
         device (string, optional): flag to enable gpus.
 
     Returns:
@@ -122,7 +167,7 @@ def WideBP(delay, H, elements, step, NelImm, grid, dt, ntimes, pad, Nz, I, nfreq
         int: dimensions of the grid along x-axis
         int: dimension of the grid alog z-axis
         array.float:new grid coordinates
-    """    
+    """
     n = int(1 / step)
     t = n * Nz
     N = int(NelImm / 2)
@@ -134,45 +179,75 @@ def WideBP(delay, H, elements, step, NelImm, grid, dt, ntimes, pad, Nz, I, nfreq
         e = np.concatenate((np.flipud(delay), delay))
         del_freq = del_to_freq(e, dt, ntimes, pad, nfreq, device)
 
-        for i in range(-elements, elements):
-            sx = centre - t * (N + i)
-            dx = centre + t * (N - i)
+        if apo == 0:
+            for i in range(-elements, elements):
+                sx = centre - t * (N + i)
+                dx = centre + t * (N - i)
 
-            if nfreq is None:
-                Map = Map + (H[sx:dx, :] * del_freq[elements+i,:])
-            else:
-                Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]] * del_freq[elements+i,:])
+                if nfreq is None:
+                    Map = Map + (H[sx:dx, :] * del_freq[elements+i, :])
+                else:
+                    Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]]
+                                 * del_freq[elements+i, :])
+        elif apo == 1:
+            weights = apodization(elements, sigma, type)
+            weights = np.concatenate((np.flipud(weights), weights))
+            for i in range(-elements, elements):
+                sx = centre - t * (N + i)
+                dx = centre + t * (N - i)
+
+                if nfreq is None:
+                    Map = Map + (H[sx:dx, :] * del_freq[elements+i, :]
+                                 * weights[elements+i, np.newaxis])
+                else:
+                    Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]] *
+                                 del_freq[elements+i, :] * weights[elements+i, np.newaxis])
 
         pulsed = Map * I[np.newaxis, :]
         power = np.sum(np.abs(pulsed) ** 2, axis=1)
 
-        return np.reshape(power, (n * NelImm, Nz)), n * NelImm, Nz, grid[centre - t * N : centre + t * N + Nz, :]
-    
+        return np.reshape(power, (n * NelImm, Nz)), n * NelImm, Nz, grid[centre - t * N: centre + t * N + Nz, :]
+
     elif device == "gpu":
-            
+
         Map = cp.zeros((t * NelImm, H.shape[1]), dtype=complex)
 
         H = cp.asarray(H)
         e = cp.concatenate((cp.flipud(delay), delay))
         del_freq = del_to_freq(e, dt, ntimes, pad, nfreq, device)
 
-        for i in range(-elements, elements):
-            sx = centre - t * (N + i)
-            dx = centre + t * (N - i)
+        if apo == 0:
+            for i in range(-elements, elements):
+                sx = centre - t * (N + i)
+                dx = centre + t * (N - i)
 
-            if nfreq is None:
-                Map = Map + (H[sx:dx, :] * del_freq[elements+i,:])
-            else:
-                Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]] * del_freq[elements+i,:])
+                if nfreq is None:
+                    Map = Map + (H[sx:dx, :] * del_freq[elements+i, :])
+                else:
+                    Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]]
+                                 * del_freq[elements+i, :])
+        elif apo == 1:
+            weights = cp.asarray(apodization(elements, sigma, type))
+            weights = cp.concatenate((cp.flipud(weights), weights))
+            for i in range(-elements, elements):
+                sx = centre - t * (N + i)
+                dx = centre + t * (N - i)
+
+                if nfreq is None:
+                    Map = Map + (H[sx:dx, :] * del_freq[elements+i, :]
+                                 * weights[elements+i, cp.newaxis])
+                else:
+                    Map = Map + (H[sx:dx, nfreq[0]:nfreq[1]] *
+                                 del_freq[elements+i, :] * weights[elements+i, cp.newaxis])
 
         pulsed = Map * I[cp.newaxis, :]
         power = cp.sum(cp.abs(pulsed) ** 2, axis=1)
 
-        return cp.reshape(power, (n * NelImm, Nz)), n * NelImm, Nz, grid[centre - t * N : centre + t * N + Nz, :]
+        return cp.reshape(power, (n * NelImm, Nz)), n * NelImm, Nz, grid[centre - t * N: centre + t * N + Nz, :]
 
 
 # %%
-def todB(BP, cut=-40, device = "cpu"):
+def todB(BP, cut=-40, device="cpu"):
     """Function for computing the valuein deciBel of the Beam patterns
 
     Args:
@@ -187,12 +262,11 @@ def todB(BP, cut=-40, device = "cpu"):
         MaxC = np.max(np.max(BP))
         Cnorm = BP / MaxC
         Cnorm = 10 * np.log10(Cnorm)
-    
+
     elif device == "gpu":
         MaxC = cp.max(cp.max(BP))
         Cnorm = BP / MaxC
         Cnorm = 10 * cp.log10(Cnorm)
-        
+
     Cnorm[Cnorm < cut] = cut
     return Cnorm
-

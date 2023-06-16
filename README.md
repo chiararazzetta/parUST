@@ -7,7 +7,7 @@ as the power of the signal in time that crosses a point of the field having fixe
 The computation is performed on CPU cores. For the Beam Pattern computation it is implemented a GPU version.
 
 
-[1] Cit archivio paper teorico nostro ?
+[1] C. Razzetta et al. A hybrid time-frequency parametric modelling of medical ultrasound signal transmission. Submitted.
 
 [2] J. A. Jensen. A new calculation procedure for spatial impulse responses in ultrasound. The Journal of the Acoustical Society of America, 105(6):3266–3274, 06 1999
 

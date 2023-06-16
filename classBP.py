@@ -45,7 +45,10 @@ class BeamPattern:
         active_el=[4],
         NelImm=70,
         probe_respTXT=None,
-        device = "cpu"
+        apo=0,
+        sigma=1.5,
+        APOtype="gauss",
+        device="cpu"
     ):
         self.BPtype = BPtype
         self.device = device
@@ -100,15 +103,18 @@ class BeamPattern:
             "A": None,
             "focus": list(focus),
             "active_el": list(active_el),
-            "Nsets" : len(focus) * len(active_el),
+            "Nsets": len(focus) * len(active_el),
             "wideH": None,
             "NelImm": NelImm,
+            "apo": apo,
+            "sigma": list(sigma),
+            "APOtype": list(APOtype),
             "NX": list(),
             "NZ": list(),
             "BPgrid": list(),
             "dbCut": -40,
-            "delays" : list(),
-            "BPlinear" : list(),
+            "delays": list(),
+            "BPlinear": list(),
             "BPdecibel": list()
         }
         self.beam["delays"].append(std_del(
@@ -117,10 +123,11 @@ class BeamPattern:
             self.field["c"],
             self.beam["active_el"][0],
         ))
-        
+
     def DelaysSet(self, free_del=None):
         if free_del is None:
-            self.beam["Nsets"] = len(self.beam["focus"]) * len(self.beam["active_el"])
+            self.beam["Nsets"] = len(
+                self.beam["focus"]) * len(self.beam["active_el"])
             self.beam["delays"] = []
             for i in range(len(self.beam["active_el"])):
                 for j in range(len(self.beam["focus"])):
@@ -130,11 +137,15 @@ class BeamPattern:
                         self.field["c"],
                         self.beam["active_el"][i],
                         self.device
-                ))
+                    ))
         else:
             self.beam["delays"] = free_del
             self.beam["Nsets"] = len(free_del)
             self.beam["focus"] = None
+
+        if self.beam["apo"] == 1 and self.beam["Nsets"] != len(self.beam["sigma"]):
+            raise Exception(
+                "The number of delay curves differs from the number of apodization curves")
 
     def SaveMaps(self, path):
         if self.BPtype == "Narrow":
@@ -189,19 +200,19 @@ class BeamPattern:
     def MapsCompute(self):
         if self.BPtype == "Narrow":
             H, A, g, xnum, znum = NarrowMaps(
-            self.probe["pitch"],
-            self.field["c"],
-            self.field["dt"],
-            self.probe["geomf"], 
-            self.field["step"],
-            self.field["Nz"], 
-            self.field["min_depth"],
-            self.field["max_depth"],
-            self.field["att_factor"],
-            self.probe["cen"],
-            self.pulse["f0"],
-            self.probe["N_el"],
-            self.beam["NelImm"]
+                self.probe["pitch"],
+                self.field["c"],
+                self.field["dt"],
+                self.probe["geomf"],
+                self.field["step"],
+                self.field["Nz"],
+                self.field["min_depth"],
+                self.field["max_depth"],
+                self.field["att_factor"],
+                self.probe["cen"],
+                self.pulse["f0"],
+                self.probe["N_el"],
+                self.beam["NelImm"]
             )
 
             self.beam["H"] = H
@@ -234,7 +245,6 @@ class BeamPattern:
             self.field["Nz"] = znum
             self.probe["idx_freq"] = idx
 
-       
     def BPcompute(self):
         if self.BPtype == "Narrow":
             for i in range(self.beam["Nsets"]):
@@ -244,37 +254,44 @@ class BeamPattern:
                     self.beam["A"],
                     self.pulse["f0"],
                     self.beam["delays"][i].shape[0],
+                    self.beam["apo"],
+                    self.beam["sigma"][i],
+                    self.beam["APOtype"][i],
                     self.device
                 )
                 self.beam["BPlinear"].append(B)
                 self.beam["BPgrid"].append(self.field["grid_coord"])
                 self.beam["NX"].append(self.field["Nx"])
                 self.beam["NZ"].append(self.field["Nz"])
-                self.beam["BPdecibel"].append(todB(B, self.beam["dbCut"], self.device))
+                self.beam["BPdecibel"].append(
+                    todB(B, self.beam["dbCut"], self.device))
         elif self.BPtype == "Wide":
             for i in range(self.beam["Nsets"]):
                 B, xnum, znum, g = WideBP(
-                self.beam["delays"][i],
-                self.beam["H"],
-                self.beam["delays"][i].shape[0],
-                self.field["step"],
-                self.beam["NelImm"],
-                self.field["grid_coord"],
-                self.field["dt"],
-                self.field["ntimes"],
-                self.field["pad"],
-                self.field["Nz"],
-                self.pulse["Pulse"],
-                self.probe["idx_freq"],
-                self.device
+                    self.beam["delays"][i],
+                    self.beam["H"],
+                    self.beam["delays"][i].shape[0],
+                    self.field["step"],
+                    self.beam["NelImm"],
+                    self.field["grid_coord"],
+                    self.field["dt"],
+                    self.field["ntimes"],
+                    self.field["pad"],
+                    self.field["Nz"],
+                    self.pulse["Pulse"],
+                    self.probe["idx_freq"],
+                    self.beam["apo"],
+                    self.beam["sigma"][i],
+                    self.beam["APOtype"][i],
+                    self.device
 
-            )
+                )
                 self.beam["BPlinear"].append(B)
                 self.beam["BPgrid"].append(g)
                 self.beam["NX"].append(xnum)
                 self.beam["NZ"].append(znum)
-                self.beam["BPdecibel"].append(todB(B, self.beam["dbCut"], self.device))
-            
+                self.beam["BPdecibel"].append(
+                    todB(B, self.beam["dbCut"], self.device))
 
     def BPplot(self, Nfig=0):
         if self.device == "cpu":
@@ -287,7 +304,6 @@ class BeamPattern:
             N = cp.asnumpy(self.beam["NZ"][Nfig])
             G = cp.asnumpy(self.beam["BPgrid"][Nfig])
             X = cp.asnumpy(self.beam["NX"][Nfig])
-            
 
         plt.rcParams["axes.autolimit_mode"] = "round_numbers"
         fig, ax = plt.subplots()
