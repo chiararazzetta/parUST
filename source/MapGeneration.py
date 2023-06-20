@@ -6,10 +6,10 @@ import math
 import numpy as np
 import scipy 
 
-from f_initialization import rit_g, grid_create, grid_create, resp_probe
+from source.f_initialization import rit_g, grid_create, grid_create, resp_probe
 
 # %%
-risplib = load_library("matrix.so", ".")
+risplib = load_library("source/matrix.so", ".")
 
 H = risplib.hmat
 

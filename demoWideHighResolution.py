@@ -1,5 +1,5 @@
 # %%
-from classBP import BeamPattern
+from source.classBP import BeamPattern
 
 # %%
 ####### Generate a test Wide Beam Pattern with default values #######

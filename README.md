@@ -12,7 +12,7 @@ The computation is performed on CPU cores. For the Beam Pattern computation it i
 
 # Usage
 Code is written in Python 3.8 but it makes use of a c++ code embedded inthe computations. The repository contains a docker file to automatically set the environment for Python and c++. Please note the container enables the use of all the available GPUs. If you do not have the GPU cores, you need to edit the container file 'devcontainer.json' end remove line 16-19.
-Concerning the c++ code, it is needed the compilation on the code 'matrix.cpp'.
+Concerning the c++ code, it is needed the compilation of the code 'matrix.cpp' in the folder source.
 
 We have compiled the file with g++ (Ubuntu 11.3.0-1ubuntu1~22.04) 11.3.0 compiler by the following two steps:
 

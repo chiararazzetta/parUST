@@ -5,15 +5,15 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import cupy as cp
 
-from f_initialization import (
+from source.f_initialization import (
     grid_create,
     element_discr,
     rit_g,
     sinusoidalPulse,
     resp_probe,
 )
-from MapGeneration import WideMaps, NarrowMaps
-from BpCompute import std_del, NarrowBP, WideBP, todB
+from source.MapGeneration import WideMaps, NarrowMaps
+from source.BpCompute import std_del, NarrowBP, WideBP, todB
 
 
 class BeamPattern:
