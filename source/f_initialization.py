@@ -24,7 +24,7 @@ def grid_create(pitch, el, step, Nz, min_depth, max_depth, device="cpu"):
         int: number of points along x axis
     """
 
-    coordx = np.arange(-el, el, step, dtype=np.float32)
+    coordx = np.linspace(-el, el, int(2* el / step)+1, dtype=np.float32)
     coordx = coordx * pitch
     coordz = np.linspace(min_depth, max_depth, Nz, dtype=np.float32)
 
