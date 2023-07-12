@@ -1,10 +1,10 @@
 # %%
-from source.classBP import BeamPattern
+from source.classBP import BP_symm
 
 # %%
 ####### Generate a test Wide Beam Pattern with default values #######
 
-WB = BeamPattern(BPtype='Wide', Ncycles=3, factor=0.3, step=0.5, Ndepth=200, NelImm=50)
+WB = BP_symm(BPtype='Wide', Ncycles=3, factor=0.3, step=0.5, Ndepth=200, NelImm=50)
 
 # Compute maps
 WB.MapsCompute()
@@ -24,5 +24,5 @@ WB.DelaysSet()
 
 # Computation and display of BP
 WB.BPcompute()
-WB.BPplot(3)
+WB.BPplot(0)
 # %%

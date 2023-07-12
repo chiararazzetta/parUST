@@ -11,7 +11,7 @@ def std_del(z_f, pitch, c, el, device="cpu"):
         z_f (float): depth of focus
         pitch (float):  element length for translations on the probe
         c (float): medium speed of sound
-        el (int): number of actuve elements
+        el (int): number of active elements
         device (string): flag to enable gpus
 
     Returns:
@@ -21,6 +21,7 @@ def std_del(z_f, pitch, c, el, device="cpu"):
         return (z_f - np.sqrt(((0.5 + np.arange(0, el)) * pitch) ** 2 + z_f**2)) / c
     elif device == "gpu":
         return (z_f - cp.sqrt(((0.5 + cp.arange(0, el)) * pitch) ** 2 + z_f**2)) / c
+
 
 
 def del_to_freq(delays, dt, ntimes, pad, nfreq=None, device="cpu"):

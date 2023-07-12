@@ -16,9 +16,9 @@ from source.MapGeneration import WideMaps, NarrowMaps
 from source.BpCompute import std_del, NarrowBP, WideBP, todB
 
 
-class BeamPattern:
+class BP_symm:
 
-    """Class containing all the methods and the parameters for a Beam Pattern calculation"""
+    """Class containing all the methods and the parameters for symmetric BP calculation"""
 
     def __init__(
         self,
@@ -122,6 +122,7 @@ class BeamPattern:
             self.probe["pitch"],
             self.field["c"],
             self.beam["active_el"][0],
+            self.device
         ))
 
     def DelaysSet(self, free_del=None):
