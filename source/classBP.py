@@ -14,7 +14,43 @@ from source.f_initialization import (
 )
 from source.MapGeneration import WideMaps, NarrowMaps
 from source.BpCompute import std_del, NarrowBP, WideBP, todB
+from source.Map_noSymm import Wide_map, Narrow_map
 
+class BP:
+    """Class containing all the methods and the parameters for BP calculation"""
+
+    def __init__(
+        self,
+        BPtype="Narrow",
+        c=1540,
+        dt=1e-8,
+        min_d=0.002,
+        max_d=0.042,
+        step=0.25,
+        Ndepth=400,
+        factor=0.5,
+        ntimes=1800,
+        pad=248,
+        pitch=0.245e-3,
+        kerf=0.035e-3,
+        elevation=5e-3,
+        geomf=0.025,
+        Nprobe=192,
+        n_xdiscr=40,
+        n_ydiscr=150,
+        f0=4.5e6,
+        Ncycles=3,
+        focus=[0.025],
+        active_el=[4],
+        NelImm=70,
+        probe_respTXT=None,
+        apo=0,
+        sigma=[1.5],
+        APOtype=["gauss"],
+        device="cpu"
+    ):
+        self.BPtype = BPtype
+        self.device = device
 
 class BP_symm:
 
