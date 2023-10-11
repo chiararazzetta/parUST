@@ -189,7 +189,6 @@ class BP_symm:
             pickle.dump(
                 [
                     self.beam["H"],
-                    self.beam["A"],
                     self.field["grid_coord"],
                     self.field["Nx"],
                     self.field["Nz"],
