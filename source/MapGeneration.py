@@ -212,7 +212,8 @@ def NarrowMaps(pitch, c, dt, f_g, step, Nz, min_d, max_d, factor, cen, f0, Nel, 
         else:
             Maps[i, :, :] = Maps[i, :, :] + np.reshape(H[sx:dx], (Nx, Nz))
     
-    return Maps, A, grid[centre - t * N : centre + t * N + Nz, :], Nx, Nz
+    Maps = Maps * A[np.newaxis]
+    return Maps, grid[centre - t * N : centre + t * N + Nz, :], Nx, Nz
 
 # %%
 def WideMaps(

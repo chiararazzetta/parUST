@@ -136,7 +136,6 @@ class BP_symm:
 
         self.beam = {
             "H": None,
-            "A": None,
             "focus": list(focus),
             "active_el": list(active_el),
             "Nsets": len(focus) * len(active_el),
@@ -215,11 +214,10 @@ class BP_symm:
     def LoadMaps(self, path):
         if self.BPtype == "Narrow":
             fNarrow = open(path, "rb")
-            H, A, g, xnum, znum = pickle.load(fNarrow)
+            H, g, xnum, znum = pickle.load(fNarrow)
             fNarrow.close()
 
             self.beam["H"] = np.asarray(H)
-            self.beam["A"] = np.asarray(A)
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
@@ -236,7 +234,7 @@ class BP_symm:
 
     def MapsCompute(self):
         if self.BPtype == "Narrow":
-            H, A, g, xnum, znum = NarrowMaps(
+            H, g, xnum, znum = NarrowMaps(
                 self.probe["pitch"],
                 self.field["c"],
                 self.field["dt"],
@@ -253,7 +251,6 @@ class BP_symm:
             )
 
             self.beam["H"] = H
-            self.beam["A"] = A
             self.field["grid_coord"] = g
             self.field["Nx"] = xnum
             self.field["Nz"] = znum
@@ -289,7 +286,6 @@ class BP_symm:
                     B = NarrowBP(
                         self.beam["delays"][i],
                         self.beam["H"],
-                        self.beam["A"],
                         self.pulse["f0"],
                         self.beam["delays"][i].shape[0],
                         self.beam["apo"],

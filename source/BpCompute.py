@@ -89,13 +89,12 @@ def apodization(elements, sigma, type="gauss"):
 # %%
 
 
-def NarrowBP(delay, map, attenuation, f0, elements, apo=0, sigma=1.5, type="gauss", device="cpu"):
+def NarrowBP(delay, map, f0, elements, apo=0, sigma=1.5, type="gauss", device="cpu"):
     """Function for Narrow Beam Pattern computation
 
     Args:
         delay (array.float): array containing the values of the delays
         map (array.complex): array of impulse response maps
-        attenuation (array.complex): attenuation map
         f0 (float): trasmission frequency
         elements (int): number of active elements (half aperture)
         apo (int, optional): flag to enable apodization: 0 no, 1 yes. Defaults to 0
@@ -119,10 +118,9 @@ def NarrowBP(delay, map, attenuation, f0, elements, apo=0, sigma=1.5, type="gaus
                 * np.exp(-2 * np.pi * 1j * f0 * delay)[:elements, np.newaxis, np.newaxis] * weights[:, np.newaxis, np.newaxis]
             )
         B = np.sum(delayed, axis=0)
-        return (np.abs(B * attenuation)) ** 2
+        return (np.abs(B)) ** 2
     elif device == "gpu":
         map = cp.asarray(map)
-        attenuation = cp.asarray(attenuation)
 
         if apo == 0:
             delayed = (
@@ -137,7 +135,7 @@ def NarrowBP(delay, map, attenuation, f0, elements, apo=0, sigma=1.5, type="gaus
             )
 
         B = cp.sum(delayed, axis=0)
-        return (cp.abs(B * attenuation)) ** 2
+        return (cp.abs(B)) ** 2
 
 # %%
 
